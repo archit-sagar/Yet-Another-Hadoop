@@ -1,4 +1,4 @@
-#Yet-Another-Hadoop
+# Yet-Another-Hadoop
 UE19CS322 Big Data Project 1: YAH or Yet Another Hadoop is meant to be a mini-HDFS setup on the system.
 
 Team:BD_083_086_242_306
