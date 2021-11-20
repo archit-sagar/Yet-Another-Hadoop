@@ -60,7 +60,7 @@ namenodeProgramPath = 'namenode.py'
 datanodeProgramPath = 'datanode.py'
 
 namenodePort = get_free_tcp_port()
-namenode = subprocess.Popen(args=["python", namenodeProgramPath, namenodePort])
+namenode = subprocess.Popen(args=["python", namenodeProgramPath, namenodePort, config['dfs_setup_config']])
 with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'w') as f:
     f.write(json.dumps({"port": namenodePort},indent=4))
 
@@ -70,7 +70,7 @@ time.sleep(1)
 #connect to namenode, set config
 try:
     con=rpyc.connect("localhost", namenodePort)
-    res = con.root.set_config(config)
+    res = con.root.isReady()
     if res:
         print("NAMENODE READY")
         con.close()
