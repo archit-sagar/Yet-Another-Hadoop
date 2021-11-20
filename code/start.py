@@ -19,6 +19,14 @@ except:
     print("Error reading config file!")
     exit()
 
+debugMode = False
+try:
+    if sys.argv[2] == '-d':
+        debugMode = True
+        print("Starting in Debug Mode...")
+except:
+    pass
+
 hexHash = sha256(str(config).strip().encode()).hexdigest()
 
 valid_conf = 0
@@ -56,7 +64,7 @@ namenode = subprocess.Popen(args=["python", namenodeProgramPath, namenodePort])
 with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'w') as f:
     f.write(json.dumps({"port": namenodePort},indent=4))
 
-print("NAMENODE started at port", namenodePort)
+print("NAMENODE started at port", namenodePort, "with pid", namenode.pid)
 time.sleep(1)
 
 #connect to namenode, set config
@@ -81,7 +89,7 @@ for i in range(config["num_datanodes"]):
     datanodePortDetails[i] = freePort
     #python datanode.py its_port its_path its_log_path namenode_port
     datanodes[i] = subprocess.Popen(args=["python", datanodeProgramPath, freePort, os.path.join(config["path_to_datanodes"], i),  os.path.join(config["datanode_log_path"], str(i)+".txt"), namenodePort])
-    print("DATANODE", i, "started at port", freePort)
+    print("DATANODE", i, "started at port", freePort, "with pid", datanodes[i].pid)
     time.sleep(0.5) #so that the port gets used before starting next datanode
 
 
@@ -104,13 +112,47 @@ except:
     namenode.terminate()
     exit()
 
+
+
 try:
-    namenode.wait()
-    for datanode in datanodes:
-        datanode.wait()
+    if not debugMode:
+        namenode.wait()
+        for datanode in datanodes:
+            datanode.wait()
+    else:
+        while True:
+            print("1: Start DataNode\n2: Stop Datanode\n0: Exit")
+            op = input()
+            if op == '1':
+                i = int(input("Enter Datanode ID: "))
+                if i >= config["num_datanodes"] or i < 0:
+                        print("Invalid Datanode ID")
+                        continue
+                if not datanodes[i].poll(): #poll returns none if process is running, else returns 1
+                    print("DATANODE", i,"already running")
+                    continue
+                datanodes[i] = subprocess.Popen(args=["python", datanodeProgramPath, datanodePortDetails[i], os.path.join(config["path_to_datanodes"], i),  os.path.join(config["datanode_log_path"], str(i)+".txt"), namenodePort])
+                time.sleep(0.5) #To make sure process gets started
+                print("DATANODE", i, "started at port", datanodePortDetails[i], "with pid", datanodes[i].pid)
+            elif op == '2':
+                i = int(input("Enter Datanode ID: "))
+                if i >= config["num_datanodes"] or i < 0:
+                        print("Invalid Datanode ID")
+                        continue
+                if datanodes[i].poll():
+                    print("DATANODE", i, "already stopped")
+                    continue
+                datanodes[i].terminate()
+                time.sleep(0.5)
+                print("DATANODE", i, "Stopped Successfully")
+            elif op == '0':
+                raise Exception
+            else:
+                continue
 except:
     print("Exiting...")
     namenode.terminate()
     for datanode in datanodes:
         datanode.terminate()
+
 
