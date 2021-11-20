@@ -12,7 +12,7 @@ client repeats the same steps if more blocks are needed
 
 for each datanode, namenode maintains number of blocks available and list of block numbers already in use. (helps to select/allocate new block numbers)
 whenever, it allocates a block, it updates the above data
-At each heartbeat from datanode (it includes block informations as well) datanode cross checks it with above maintained data and updates if necessary.
+At each heartbeat from datanode (it includes block informations as well) namenode cross checks it with above maintained data and updates if necessary.
 
 (assume block ids to be serial from 1 to n)
 
