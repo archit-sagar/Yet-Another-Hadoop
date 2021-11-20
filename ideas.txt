@@ -1,0 +1,35 @@
+Namenode starts, its port is known
+Then, datanodes are started providing namenode port, their id and ports
+Each datanode registers itself to namenode (send some necessary reports like available blocks etc)
+
+Write operation:
+client send request to create a file to namenode
+namenode creates the entry
+client starts asking for allocation of blocks in order to namenode (sends file loc, block index)
+namenode responds with datanodes, block numbers to be stored at (3 replication factor => 3 datanodes)
+client sends datablock to datanode-1, datanode-1 stores and sends it to datanode-2 and continues until all required datanodes have stored. Then sends back the acknowledgement to client.
+client repeats the same steps if more blocks are needed
+
+for each datanode, namenode maintains number of blocks available and list of block numbers already in use. (helps to select/allocate new block numbers)
+whenever, it allocates a block, it updates the above data
+At each heartbeat from datanode (it includes block informations as well) datanode cross checks it with above maintained data and updates if necessary.
+
+(assume block ids to be serial from 1 to n)
+
+file_table structure in namenode:
+
+{
+folders: {
+	folders: {...},
+	files: {...}
+},
+files: {
+	filename1: {
+			metadata: {...},
+			blocks: [][]
+			(each row, is blocks for that block id)
+			(each column, is replicated/copies of that block)
+			(its tupple: (datanode_id, block_number) )
+		}
+}
+}
