@@ -87,8 +87,8 @@ datanodes = [None] * config["num_datanodes"]
 for i in range(config["num_datanodes"]):
     freePort = get_free_tcp_port()
     datanodePortDetails[i] = freePort
-    #python datanode.py its_port its_path its_log_path namenode_port
-    datanodes[i] = subprocess.Popen(args=["python", datanodeProgramPath, freePort, os.path.join(config["path_to_datanodes"], i),  os.path.join(config["datanode_log_path"], str(i)+".txt"), namenodePort])
+    #python datanode.py datanode_id its_port its_path its_log_path namenode_port
+    datanodes[i] = subprocess.Popen(args=["python", datanodeProgramPath, i, freePort, os.path.join(config["path_to_datanodes"], i),  os.path.join(config["datanode_log_path"], str(i)+".txt"), namenodePort])
     print("DATANODE", i, "started at port", freePort, "with pid", datanodes[i].pid)
     time.sleep(0.5) #so that the port gets used before starting next datanode
 
