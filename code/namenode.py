@@ -20,7 +20,7 @@ logger.info("Namenode Started")
 
 fs_image = {}
 
-#for each datanode, maintains num of available blocks and list of used blocks {datanode_id: (available, usedList)}
+#for each datanode, maintains num of available blocks {datanode_id: availableNum}
 datanodeDetails = {}
 datanodePorts = {}
 
@@ -34,8 +34,8 @@ if os.path.exists(checkpointFilePath):
 class NameNodeService(rpyc.Service):
     def exposed_isReady(self):
         return True
-    def exposed_registerDatanode(self, id, portNum, details):
-        datanodeDetails[id] = details #(available, usedList)
+    def exposed_registerDatanode(self, id, portNum, availableNum):
+        datanodeDetails[id] = availableNum
         datanodePorts[id] = portNum
         logger.debug("Datanode %s registered", id)
         return True

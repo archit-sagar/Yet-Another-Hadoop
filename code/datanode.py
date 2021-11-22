@@ -20,14 +20,15 @@ logger = logging.getLogger()
 logger.info("Datanode Started")
 
 myDatanodePath = os.path.join(config["path_to_datanodes"], str(myId))
+#maintaining list of blocks isn't necessary. Might be removed later
 blockList = os.listdir(myDatanodePath) #assuming folder contains only blocks
 logger.debug(blockList)
 
-availableBlocks = config["datanode_size"] - len(blockList)
-logger.info("Available blocks: %s", availableBlocks)
+availableBlocksNum = config["datanode_size"] - len(blockList)
+logger.info("Available blocks: %s", availableBlocksNum)
 
 con=rpyc.connect("localhost", namenodePort)
-res = con.root.registerDatanode(myId, myPort, (availableBlocks, blockList))
+res = con.root.registerDatanode(myId, myPort, availableBlocksNum)
 if res:
     logger.info("Registered with Namenode")
 con.close()
