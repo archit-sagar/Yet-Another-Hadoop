@@ -27,9 +27,9 @@ files: {
 	filename1: {
 			metadata: {...},
 			blocks: [][]
-			(each row, is blocks for that block id)
-			(each column, is replicated/copies of that block)
-			(its tupple: (datanode_id, block_number) )
+			(each row is for different block. Ex: block1 of file => row1)
+			(each row: [block_id, datanode1_id, datanode2_id, datanode3_id])
+			(This is because, block_id can be same for particular block on different machines)
 		}
 }
 }
