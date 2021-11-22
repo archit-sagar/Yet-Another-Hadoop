@@ -12,7 +12,10 @@ fdata=open(sys.argv[3],"r")
 config=json.load(fdata)
 fdata.close()
 with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
-    namenodePort = json.load(f)["port"]
+    namenodePort = json.load(f)["port"] #port (int)
+
+with  open(os.path.join(config["path_to_datanodes"], "ports.json"), 'r') as f:
+    datanodePorts = json.load(f) #dict
 
 #setting up logger
 logging.basicConfig(filename=os.path.join(config['datanode_log_path'], str(myId)+".txt"), level=logging.DEBUG, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -37,6 +40,30 @@ class DataNodeService(rpyc.Service):
     def exposed_isReady(self):
         return True
 
+    #for write    
+    def exposed_recursiveWrite(self, block_id, data, nextDatanodes):
+        try:
+            with open(os.path.join(myDatanodePath, str(block_id)), "w") as f:
+                f.write(data)
+            res = self.forward(block_id, data, nextDatanodes)
+            if not res:
+                #if error in storing block in any datanode, delete from all datanodes (operation failed)
+                os.remove(os.path.join(myDatanodePath, str(block_id)))
+            return res
+        except:
+            return False
+    
+    def forward(self, block_id, data, nextDatanodes):
+        if len(nextDatanodes) == 0:
+            return True
+        try:
+            dnode = nextDatanodes[0]
+            con = rpyc.connect("localhost", datanodePorts[dnode])
+            res = con.root.recursiveWrite(block_id, data, nextDatanodes[1:])
+            con.close()
+            return res
+        except:
+            return False
 
 if __name__ == "__main__":
     t = ThreadedServer(DataNodeService, port=myPort)
