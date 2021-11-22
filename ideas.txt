@@ -14,7 +14,7 @@ for each datanode, namenode maintains number of blocks available and list of blo
 whenever, it allocates a block, it updates the above data
 At each heartbeat from datanode (an rpc call from namenode to that datanode, like root.getBeat()) (it includes block informations as well) namenode cross checks it with above maintained data and updates if necessary.
 
-(assume block ids to be serial from 1 to n)
+(assume block ids are randomly generated using uuid lib)
 
 file_table structure in namenode:
 
