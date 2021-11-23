@@ -5,6 +5,7 @@ import json
 import os
 import pickle
 import logging
+import signal
 
 #python namenode.py its_port config_path
 myPort = int(sys.argv[1])
@@ -107,7 +108,16 @@ class NameNodeService(rpyc.Service):
         logger.info("Added new file {} ".format(absoluteFilePath))
         return True
 
+
+def writeCheckPoints(signal, frame): #writes fs_image into checkpointFile
+    with open(checkpointFilePath, 'wb') as f:
+        pickle.dump(fs_image, f)
+        logger.info("Fs_image written into Checkpoint")
+    sys.exit()
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, writeCheckPoints)
     t = ThreadedServer(NameNodeService, port=myPort)
     logger.info("Namenode ThreadedServer started on port %s", myPort)
     t.start()
