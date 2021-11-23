@@ -45,24 +45,31 @@ class DataNodeService(rpyc.Service):
         try:
             with open(os.path.join(myDatanodePath, str(block_id)), "w") as f:
                 f.write(data)
+                logger.info("Block {} is written successfully".format(block_id))
             res = self.forward(block_id, data, nextDatanodes)
             if not res:
                 #if error in storing block in any datanode, delete from all datanodes (operation failed)
+                logger.error("Block {} write failed due to failure in next nodes".format(block_id))
                 os.remove(os.path.join(myDatanodePath, str(block_id)))
             return res
         except:
+            logger.error("Block {} write failed".format(block_id))
             return False
-    
+
+    #helper for write
     def forward(self, block_id, data, nextDatanodes):
         if len(nextDatanodes) == 0:
             return True
         try:
             dnode = nextDatanodes[0]
+            logger.info("Block {} write forwarding to {}".format(block_id, dnode))
             con = rpyc.connect("localhost", datanodePorts[dnode])
             res = con.root.recursiveWrite(block_id, data, nextDatanodes[1:])
             con.close()
+            logger.info("Forward successful")
             return res
         except:
+            logger.error("Block {} forward failed".format(block_id))
             return False
 
 if __name__ == "__main__":
