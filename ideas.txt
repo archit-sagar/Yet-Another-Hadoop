@@ -37,3 +37,5 @@ files: {
 I removed storing list of used block_id per datanode, thinking it as unnecessary.
 But, might add it in future, just to perform some initial checks on datanode (if all blocks are present or not)
 as it is mentioned in assignment-pdf
+
+Might add metadata property for folders aswell, so it can be shown during ls. Metadata could be time of creation
