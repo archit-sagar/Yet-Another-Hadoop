@@ -14,8 +14,8 @@ fdata.close()
 with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
     namenodePort = json.load(f)["port"] #port (int)
 
-with  open(os.path.join(config["path_to_datanodes"], "ports.json"), 'r') as f:
-    datanodePorts = json.load(f) #dict
+datanodePorts = {}
+
 
 #setting up logger
 logging.basicConfig(filename=os.path.join(config['datanode_log_path'], str(myId)+".txt"), level=logging.DEBUG, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -38,6 +38,9 @@ con.close()
 
 class DataNodeService(rpyc.Service):
     def exposed_isReady(self):
+        with  open(os.path.join(config["path_to_datanodes"], "ports.json"), 'r') as f:
+            global datanodePorts
+            datanodePorts = json.load(f) #dict
         return True
 
     #for write    

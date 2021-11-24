@@ -70,17 +70,20 @@ class NameNodeService(rpyc.Service):
         fileName = splitPath[-1]
         folderPath = splitPath[:-1]
         if self.exposed_isFolderExists(str("/").join(folderPath)):
-            curFolder = fs_image
-            for folderName in folderPath:
-                curFolder = curFolder["folders"][folderName]
+            curFolder = self.getFolder(str("/").join(folderPath))
             if fileName in curFolder["files"].keys():
                 return True
             else:
                 return False
         return False
 
-    def exposed_addFolder(self, absoluteFolderPath, folderName): #adds a new folder at absoluteFolderPath, return true or false
-        folder = self.getFolder(absoluteFolderPath)
+    def exposed_addFolder(self, absoluteFolderPath): #adds a new folder for absoluteFolderPath, return true or false
+        splitPath = absoluteFolderPath.split("/")
+        folderName = splitPath[-1]
+        if not folderName.isalnum():
+            return False
+        parentFolderPath = str("/").join(splitPath[:-1])
+        folder = self.getFolder(parentFolderPath)
         if folder == False:
             return False
         if folderName in folder['folders'].keys():
@@ -90,7 +93,7 @@ class NameNodeService(rpyc.Service):
             "folders": {},
             "files": {}
         }
-        logger.info("Added new Folder {} at {}".format(folderName, absoluteFolderPath))
+        logger.info("Added new Folder {}".format(absoluteFolderPath))
         return True
 
     def exposed_addFileEntry(self, absoluteFilePath, meta): #adds file entry, return true. Else return false
@@ -101,7 +104,7 @@ class NameNodeService(rpyc.Service):
         folderPath = splitPath[:-1]
         folder = self.getFolder(str("/").join(folderPath))
         #adding entry
-        folder[fileName] = {
+        folder['files'][fileName] = {
             "metadata": meta.copy(),
             "blocks": []
         }
