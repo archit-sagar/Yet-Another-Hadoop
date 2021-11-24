@@ -50,7 +50,7 @@ class NameNodeService(rpyc.Service):
 
     def getFolder(self, absoluteFolderPath): #returns folder dict if exists, else return false
         curFolder = fs_image
-        splitPath = absoluteFolderPath.split("/")
+        splitPath = list(filter(lambda x: x, absoluteFolderPath.split("/")))
         for folderName in splitPath:
             if not folderName.isalnum():
                 return False
@@ -66,7 +66,7 @@ class NameNodeService(rpyc.Service):
         else: return False
     
     def exposed_isFileExists(self, absoluteFilePath): #path: a/b/c/file.txt
-        splitPath = absoluteFilePath.split("/")
+        splitPath = list(filter(lambda x: x, absoluteFilePath.split("/")))
         fileName = splitPath[-1]
         folderPath = splitPath[:-1]
         if self.exposed_isFolderExists(str("/").join(folderPath)):
@@ -78,7 +78,7 @@ class NameNodeService(rpyc.Service):
         return False
 
     def exposed_addFolder(self, absoluteFolderPath): #adds a new folder for absoluteFolderPath, return true or false
-        splitPath = absoluteFolderPath.split("/")
+        splitPath = list(filter(lambda x: x, absoluteFolderPath.split("/")))
         folderName = splitPath[-1]
         if not folderName.isalnum():
             return False
@@ -99,7 +99,7 @@ class NameNodeService(rpyc.Service):
     def exposed_addFileEntry(self, absoluteFilePath, meta): #adds file entry, return true. Else return false
         if self.exposed_isFileExists(absoluteFilePath):
             return False
-        splitPath = absoluteFilePath.split("/")
+        splitPath = list(filter(lambda x: x, absoluteFilePath.split("/")))
         fileName = splitPath[-1]
         folderPath = splitPath[:-1]
         folder = self.getFolder(str("/").join(folderPath))
