@@ -6,6 +6,8 @@ import os
 import pickle
 import logging
 import signal
+import uuid
+import random
 
 #python namenode.py its_port config_path
 myPort = int(sys.argv[1])
@@ -15,8 +17,9 @@ fdata.close()
 
 
 #setting up logger
-logging.basicConfig(filename=config['namenode_log_path'], level=logging.DEBUG, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-logger = logging.getLogger()
+import logging.config
+logging.basicConfig(filename=config['namenode_log_path'], level=logging.INFO, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logger = logging.getLogger('')
 logger.info("Namenode Started")
 
 fs_image = {
@@ -28,6 +31,8 @@ fs_image = {
     }
 }
 
+tempBlockDetails = {}
+
 #for each datanode, maintains num of available blocks {datanode_id: availableNum}
 datanodeDetails = {}
 datanodePorts = {}
@@ -35,9 +40,13 @@ datanodePorts = {}
 #loading saved fs_image back to memory
 checkpointFilePath = os.path.join(config['namenode_checkpoints'], "checkpointFile")
 if os.path.exists(checkpointFilePath):
-    with open(checkpointFilePath, 'rb') as f:
-        fs_image = pickle.load(f)
-    logger.info("fs_image loaded from checkpoint")
+    try:
+        with open(checkpointFilePath, 'rb') as f:
+            fs_image = pickle.load(f)
+        logger.info("fs_image loaded from checkpoint")
+        logger.info(fs_image)
+    except:
+        logger.error("Error loading fs_image checkpoint")
 
 class NameNodeService(rpyc.Service):
     def exposed_isReady(self):
@@ -45,7 +54,7 @@ class NameNodeService(rpyc.Service):
     def exposed_registerDatanode(self, id, portNum, availableNum):
         datanodeDetails[id] = availableNum
         datanodePorts[id] = portNum
-        logger.debug("Datanode %s registered", id)
+        logger.info("Datanode %s registered", id)
         return True
 
     def getFolder(self, absoluteFolderPath): #returns folder dict if exists, else return false
@@ -59,23 +68,29 @@ class NameNodeService(rpyc.Service):
             else:
                 return False
         return curFolder
+    
 
     def exposed_isFolderExists(self, absoluteFolderPath): #path: separated by / ex: a/b/c
         if self.getFolder(absoluteFolderPath):
             return True
         else: return False
-    
-    def exposed_isFileExists(self, absoluteFilePath): #path: a/b/c/file.txt
+
+    def getFile(self, absoluteFilePath): #returns file if exists, else return false
         splitPath = list(filter(lambda x: x, absoluteFilePath.split("/")))
         fileName = splitPath[-1]
         folderPath = splitPath[:-1]
         if self.exposed_isFolderExists(str("/").join(folderPath)):
             curFolder = self.getFolder(str("/").join(folderPath))
             if fileName in curFolder["files"].keys():
-                return True
+                return curFolder['files'][fileName]
             else:
                 return False
         return False
+    
+    def exposed_isFileExists(self, absoluteFilePath): #path: a/b/c/file.txt
+        if self.getFile(absoluteFilePath):
+            return True
+        else: return False
 
     def exposed_addFolder(self, absoluteFolderPath): #adds a new folder for absoluteFolderPath, return true or false
         splitPath = list(filter(lambda x: x, absoluteFolderPath.split("/")))
@@ -97,6 +112,7 @@ class NameNodeService(rpyc.Service):
         return True
 
     def exposed_addFileEntry(self, absoluteFilePath, meta): #adds file entry, return true. Else return false
+        meta = pickle.loads(meta) #objects must be passed as pickled, to preserve their type
         if self.exposed_isFileExists(absoluteFilePath):
             return False
         splitPath = list(filter(lambda x: x, absoluteFilePath.split("/")))
@@ -105,12 +121,37 @@ class NameNodeService(rpyc.Service):
         folder = self.getFolder(str("/").join(folderPath))
         #adding entry
         folder['files'][fileName] = {
-            "metadata": meta.copy(),
+            "metadata": meta,
             "blocks": []
         }
         logger.info("Added new file {} ".format(absoluteFilePath))
         return True
 
+    def exposed_allocateBlocks(self):
+        randId = uuid.uuid1().int
+        #for now, allocating datanodes randomly
+        #as of now, I'm not checking if space available or not, will add it later
+        n = config['replication_factor']
+        row = [randId]
+        available = {i for i in datanodeDetails.keys()} #later may add other variable called as active datanodes and use it
+        for i in range(n):
+            ch = random.choice(list(available))
+            row.append(ch)
+            available.remove(ch)
+            # datanodeDetails[ch] -= 1
+            #not changing, availableNum as of now, will do later
+        tempBlockDetails[randId] = row
+        return row
+        
+    def exposed_commitBlocks(self, block_id, status, absoluteFilePath=''):
+        #might improve later
+        if not status:
+            tempBlockDetails.pop(block_id)
+            return
+        row = tempBlockDetails[block_id]
+        file = self.getFile(absoluteFilePath)
+        file['blocks'].append(row)
+        return
 
 def writeCheckPoints(signal, frame): #writes fs_image into checkpointFile
     with open(checkpointFilePath, 'wb') as f:
