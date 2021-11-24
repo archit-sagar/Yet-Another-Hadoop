@@ -64,7 +64,7 @@ class DataNodeService(rpyc.Service):
         if len(nextDatanodes) == 0:
             return True
         try:
-            dnode = nextDatanodes[0]
+            dnode = str(nextDatanodes[0])
             logger.info("Block {} write forwarding to {}".format(block_id, dnode))
             con = rpyc.connect("localhost", datanodePorts[dnode])
             res = con.root.recursiveWrite(block_id, data, nextDatanodes[1:])
