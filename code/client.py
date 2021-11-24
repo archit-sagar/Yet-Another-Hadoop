@@ -2,6 +2,8 @@ import sys
 import rpyc
 import json
 import os
+import time
+import pickle
 
 fdata=open(sys.argv[1],"r")
 config=json.load(fdata)
@@ -14,7 +16,8 @@ with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
     namenodePort = json.load(f)["port"] #port (int)
 
 with  open(os.path.join(config["path_to_datanodes"], "ports.json"), 'r') as f:
-    datanodePorts = json.load(f) #dict
+    datanodePorts = json.load(f) #dict #note: key will be string (instead of int, becausing of parsing)
+    # print(datanodePorts)
 
 try:
     namenode = rpyc.connect("localhost", namenodePort)
@@ -53,12 +56,14 @@ def getAbsolutePath(path):
 
 def cdCommand(args): #it validates if folder exists, if true then changes the actualPath variable
     global actualPath
-    path = args[0]
-    if not path:
+    try:
+        path = args[0]
+        if not path:
+            raise Exception
+    except:
         printError("Path is required")
         return
     absPath = getAbsolutePath(path)
-    print(absPath)
     if absPath == False:
         printError("Path invalid")
         return
@@ -69,8 +74,11 @@ def cdCommand(args): #it validates if folder exists, if true then changes the ac
         printError("Path doesn't exists")
     
 def mkdirCommand(args): #creates a dir if not already exists
-    path = args[0]
-    if not path:
+    try:
+        path = args[0]
+        if not path:
+            raise Exception
+    except:
         printError("Folder path is required")
         return
     absPath = getAbsolutePath(path)
@@ -86,15 +94,88 @@ def mkdirCommand(args): #creates a dir if not already exists
     else:
         printError("Folder not created")
 
+def putCommand(args): #reads file from source and puts it to destination
+    try:
+        sourcePath = args[0]
+        if not sourcePath:
+            raise Exception
+    except:
+        printError("Source and Destination are required")
+        return
+    try:
+        destPath = args[1]
+    except:
+        destPath = ''
     
+    if not os.path.isfile(sourcePath):
+        printError("Source file not found")
+        return
+    absoluteDestPath = getAbsolutePath(destPath)
+    if absoluteDestPath == False:
+        printError("Invalid Destination Path")
+        return
+    if not namenode.root.isFolderExists(absoluteDestPath):
+        printError("Destination folder doesn't exists")
+        return
+    fileName = sourcePath.strip('/').split('/')[-1] #getting last value
+    fileSize = os.path.getsize(sourcePath)
+    fileTime = time.time() #epoch time, while file is added
+    absoluteFilePath = absoluteDestPath + '/' + fileName
+    metaData = {
+        'size': fileSize,
+        'createdTime': fileTime
+    }
+    res = namenode.root.addFileEntry(absoluteFilePath, pickle.dumps(metaData))
+    if not res:
+        printError("File already exists in given destination")
+        return
+    print("File entry added")
+    #now start reding file, get allocated blocks, put data into blocks
+    with open(sourcePath, 'r') as f:
+        blockCount = 0
+        startTime = time.time()
+        while f.tell() < fileSize: #f.tell() returns current read position
+            data = f.read(config['block_size'])
+            writeStatus = False
+            for x in range(5): #if block storage fails, try 5 more times
+                row = namenode.root.allocateBlocks() #[block_id, dn1, dn2, dn3]
+                blockId = row[0]
+                dn1 = row[1]
+                nextDns = row[2:]
+                try:
+                    con = rpyc.connect('localhost', datanodePorts[str(dn1)])
+                    res = con.root.recursiveWrite(blockId, data, nextDns)
+                    con.close()
+                    if res:
+                        namenode.root.commitBlocks(blockId, True, absoluteFilePath)
+                        writeStatus = True
+                        blockCount+=1
+                        break
+                    else:
+                        namenode.root.commitBlocks(blockId, False)
+                except Exception as e:
+                    print(e)
+                    namenode.root.commitBlocks(blockId, False)
+            if not writeStatus:
+                #failed to write even after 5 attempts
+                #remove the half written file using rm command
+                #show error
+                printError("Write Failed in between")
+                return
+        endTime = time.time()
+        repFactor = config['replication_factor']
+        print("{} * {} = {} Blocks written in {:0.2f}s".format(blockCount, repFactor, blockCount*repFactor,endTime-startTime))
 
+
+                
 def exitCommand(args):
     exit()
 
 funcs = {
     'exit': exitCommand,
     'cd': cdCommand,
-    'mkdir': mkdirCommand
+    'mkdir': mkdirCommand,
+    'put': putCommand
 }
 
 def default(args):
