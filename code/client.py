@@ -15,9 +15,6 @@ actualPath = ''
 with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
     namenodePort = json.load(f)["port"] #port (int)
 
-with  open(os.path.join(config["path_to_datanodes"], "ports.json"), 'r') as f:
-    datanodePorts = json.load(f) #dict #note: key will be string (instead of int, becausing of parsing)
-    # print(datanodePorts)
 
 try:
     namenode = rpyc.connect("localhost", namenodePort)
@@ -143,7 +140,7 @@ def putCommand(args): #reads file from source and puts it to destination
                 dn1 = row[1]
                 nextDns = row[2:]
                 try:
-                    con = rpyc.connect('localhost', datanodePorts[str(dn1)])
+                    con = rpyc.connect('localhost', dn1)
                     res = con.root.recursiveWrite(blockId, data, nextDns)
                     con.close()
                     if res:

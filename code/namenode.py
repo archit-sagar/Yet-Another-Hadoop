@@ -132,23 +132,25 @@ class NameNodeService(rpyc.Service):
         #for now, allocating datanodes randomly
         #as of now, I'm not checking if space available or not, will add it later
         n = config['replication_factor']
-        row = [randId]
+        rowToSend = [randId] #with port numbers of datanodes
+        rowToStore = [randId] #with id of datanodes
         available = {i for i in datanodeDetails.keys()} #later may add other variable called as active datanodes and use it
         for i in range(n):
             ch = random.choice(list(available))
-            row.append(ch)
+            rowToStore.append(ch)
             available.remove(ch)
+            rowToSend.append(datanodePorts[ch])
             # datanodeDetails[ch] -= 1
             #not changing, availableNum as of now, will do later
-        tempBlockDetails[randId] = row
-        return row
+        tempBlockDetails[randId] = rowToStore
+        return rowToSend
         
     def exposed_commitBlocks(self, block_id, status, absoluteFilePath=''):
         #might improve later
         if not status:
             tempBlockDetails.pop(block_id)
             return
-        row = tempBlockDetails[block_id]
+        row = tempBlockDetails.pop(block_id)
         file = self.getFile(absoluteFilePath)
         file['blocks'].append(row)
         return

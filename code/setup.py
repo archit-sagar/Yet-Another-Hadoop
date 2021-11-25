@@ -14,10 +14,6 @@ except:
 
 directory=config["path_to_datanodes"]
 try:
-    #creating ports.json file in datanodes folder. Here, datanode ports are stored when they start
-    f = open(os.path.join(directory, "ports.json"), 'w')
-    f.write(json.dumps({i:0 for i in range(config["num_datanodes"])},indent=4))
-    f.close()
     for i in range(config["num_datanodes"]):
         path=os.path.join(directory,str(i))
         os.mkdir(path)
