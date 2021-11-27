@@ -211,6 +211,11 @@ def catCommand(args):
         print(res,end='')   
     print()         
     
+def lsCommand(args):
+    fnames=namenode.root.exposed_getFolder(actualPath)
+    for i in fnames:
+        print(i)
+
 
 def exitCommand(args):
     print('exiting...')
@@ -221,7 +226,8 @@ funcs = {
     'cd': cdCommand,
     'mkdir': mkdirCommand,
     'put': putCommand,
-    'cat': catCommand
+    'cat': catCommand,
+    'ls': lsCommand
 }
 
 def default(args):
