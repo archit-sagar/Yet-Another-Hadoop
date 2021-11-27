@@ -116,6 +116,22 @@ except:
     exit()
 
 
+try:
+    con=rpyc.connect("localhost", namenodePort)
+    res = con.root.isReady()
+    if res:
+        con.root.start_heartbeat()
+        con.close()
+    else:
+        raise Exception
+except:
+    print("NAMENODE FAILED")
+    for i in range(config['num_datanodes']):
+        datanodes[i].terminate()
+    namenode.terminate()
+    exit()
+
+
 
 try:
     if not debugMode:
