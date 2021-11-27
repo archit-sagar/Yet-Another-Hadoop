@@ -8,6 +8,7 @@ import logging
 import signal
 import uuid
 import random
+import time
 
 #python namenode.py its_port config_path
 myPort = int(sys.argv[1])
@@ -118,7 +119,10 @@ class NameNodeService(rpyc.Service):
         #adding entry
         folder["folders"][folderName] = {
             "folders": {},
-            "files": {}
+            "files": {},
+            "metadata": {
+                'createdTime': time.time()
+            }
         }
         logger.info("Added new Folder {}".format(absoluteFolderPath))
         return True
