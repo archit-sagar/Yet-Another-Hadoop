@@ -57,6 +57,9 @@ class NameNodeService(rpyc.Service):
         logger.info("Datanode %s registered", id)
         return True
 
+    def exposed_returnPorts(self, id):
+        return datanodePorts[id]
+
     def getFolder(self, absoluteFolderPath): #returns folder dict if exists, else return false
         curFolder = fs_image
         splitPath = list(filter(lambda x: x, absoluteFolderPath.split("/")))
@@ -86,6 +89,9 @@ class NameNodeService(rpyc.Service):
             else:
                 return False
         return False
+
+    def exposed_getFile(self,absoluteFilePath):
+        return self.getFile(absoluteFilePath)
     
     def exposed_isFileExists(self, absoluteFilePath): #path: a/b/c/file.txt
         if self.getFile(absoluteFilePath):
@@ -132,23 +138,25 @@ class NameNodeService(rpyc.Service):
         #for now, allocating datanodes randomly
         #as of now, I'm not checking if space available or not, will add it later
         n = config['replication_factor']
-        row = [randId]
+        rowToSend = [randId] #with port numbers of datanodes
+        rowToStore = [randId] #with id of datanodes
         available = {i for i in datanodeDetails.keys()} #later may add other variable called as active datanodes and use it
         for i in range(n):
             ch = random.choice(list(available))
-            row.append(ch)
+            rowToStore.append(ch)
             available.remove(ch)
+            rowToSend.append(datanodePorts[ch])
             # datanodeDetails[ch] -= 1
             #not changing, availableNum as of now, will do later
-        tempBlockDetails[randId] = row
-        return row
+        tempBlockDetails[randId] = rowToStore
+        return rowToSend
         
     def exposed_commitBlocks(self, block_id, status, absoluteFilePath=''):
         #might improve later
         if not status:
             tempBlockDetails.pop(block_id)
             return
-        row = tempBlockDetails[block_id]
+        row = tempBlockDetails.pop(block_id)
         file = self.getFile(absoluteFilePath)
         file['blocks'].append(row)
         return

@@ -14,7 +14,6 @@ fdata.close()
 with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
     namenodePort = json.load(f)["port"] #port (int)
 
-datanodePorts = {}
 
 
 #setting up logger
@@ -38,9 +37,6 @@ con.close()
 
 class DataNodeService(rpyc.Service):
     def exposed_isReady(self):
-        with  open(os.path.join(config["path_to_datanodes"], "ports.json"), 'r') as f:
-            global datanodePorts
-            datanodePorts = json.load(f) #dict
         return True
 
     #for write    
@@ -59,14 +55,24 @@ class DataNodeService(rpyc.Service):
             logger.error("Block {} write failed".format(block_id))
             return False
 
+    def exposed_read(self,block_id):
+        try:
+            with open(os.path.join(myDatanodePath, str(block_id)), "r") as f:
+                data=f.read()
+                logger.info("Block {} is read successfully".format(block_id))
+                return data
+        except:
+            logger.error("Block {} read failed".format(block_id))
+            return False
+
     #helper for write
     def forward(self, block_id, data, nextDatanodes):
         if len(nextDatanodes) == 0:
             return True
         try:
-            dnode = str(nextDatanodes[0])
+            dnode = nextDatanodes[0]
             logger.info("Block {} write forwarding to {}".format(block_id, dnode))
-            con = rpyc.connect("localhost", datanodePorts[dnode])
+            con = rpyc.connect("localhost", dnode)
             res = con.root.recursiveWrite(block_id, data, nextDatanodes[1:])
             con.close()
             logger.info("Forward successful")

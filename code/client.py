@@ -15,9 +15,6 @@ actualPath = ''
 with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
     namenodePort = json.load(f)["port"] #port (int)
 
-with  open(os.path.join(config["path_to_datanodes"], "ports.json"), 'r') as f:
-    datanodePorts = json.load(f) #dict #note: key will be string (instead of int, becausing of parsing)
-    # print(datanodePorts)
 
 try:
     namenode = rpyc.connect("localhost", namenodePort)
@@ -143,7 +140,7 @@ def putCommand(args): #reads file from source and puts it to destination
                 dn1 = row[1]
                 nextDns = row[2:]
                 try:
-                    con = rpyc.connect('localhost', datanodePorts[str(dn1)])
+                    con = rpyc.connect('localhost', dn1)
                     res = con.root.recursiveWrite(blockId, data, nextDns)
                     con.close()
                     if res:
@@ -166,16 +163,65 @@ def putCommand(args): #reads file from source and puts it to destination
         repFactor = config['replication_factor']
         print("{} * {} = {} Blocks written in {:0.2f}s".format(blockCount, repFactor, blockCount*repFactor,endTime-startTime))
 
+def catCommand(args):
+    path=args[0]
+    fileLoc=path.split('/')
+    filename=fileLoc[-1]
+    filePath=fileLoc[0:-1]
+    absPath = getAbsolutePath(str('/').join(filePath))
+    absPath=absPath+'/'+filename
+    if absPath == False:
+        printError("Path invalid")
+        return
+    res = namenode.root.isFileExists(absPath)
+    if not res:
+        printError("File doesn't exists")
+        return
+    try:
+        if(args[1]=='>'):
+            destFile=args[2]
+            with open(destFile,'w') as f:
+                fileContent=namenode.root.getFile(absPath)
+                blocks=fileContent['blocks']
+                for i in blocks:
+                    blockID=i[0]
+                    dn1=i[1:]
+                    for i in dn1:
+                        con=rpyc.connect('localhost', namenode.root.returnPorts(i))
+                        res=con.root.read(blockID)
+                        con.close()
+                        if res:
+                            break
+                    f.write(res)
+            f.close()
+            return
+    except:
+        print("Printing to terminal...")
+    fileContent=namenode.root.getFile(absPath)
+    blocks=fileContent['blocks']
+    for i in blocks:
+        blockID=i[0]
+        dn1=i[1:]
+        for i in dn1:
+            con=rpyc.connect('localhost', namenode.root.returnPorts(i))
+            res=con.root.read(blockID)
+            con.close()
+            if res:
+                break
+        print(res,end='')   
+    print()         
+    
 
-                
 def exitCommand(args):
+    print('exiting...')
     exit()
 
 funcs = {
     'exit': exitCommand,
     'cd': cdCommand,
     'mkdir': mkdirCommand,
-    'put': putCommand
+    'put': putCommand,
+    'cat': catCommand
 }
 
 def default(args):

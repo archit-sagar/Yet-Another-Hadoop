@@ -95,8 +95,6 @@ for i in range(config["num_datanodes"]):
     print("DATANODE", i, "started at port", freePort, "with pid", datanodes[i].pid)
     time.sleep(0.5) #so that the port gets used before starting next datanode
 
-with open(os.path.join(config["path_to_datanodes"], "ports.json"), 'w') as f:
-    f.write(json.dumps(datanodePortDetails,indent=4))
 
 try:
     for i in range(config['num_datanodes']):
