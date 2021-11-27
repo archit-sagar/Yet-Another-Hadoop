@@ -57,6 +57,9 @@ class NameNodeService(rpyc.Service):
         logger.info("Datanode %s registered", id)
         return True
 
+    def exposed_returnPorts(self, id):
+        return datanodePorts[id]
+
     def getFolder(self, absoluteFolderPath): #returns folder dict if exists, else return false
         curFolder = fs_image
         splitPath = list(filter(lambda x: x, absoluteFolderPath.split("/")))
@@ -86,6 +89,9 @@ class NameNodeService(rpyc.Service):
             else:
                 return False
         return False
+
+    def exposed_getFile(self,absoluteFilePath):
+        return self.getFile(absoluteFilePath)
     
     def exposed_isFileExists(self, absoluteFilePath): #path: a/b/c/file.txt
         if self.getFile(absoluteFilePath):
