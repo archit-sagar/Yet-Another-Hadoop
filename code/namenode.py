@@ -215,12 +215,9 @@ def sending_heartbeat():
             for i in range(config["num_datanodes"]):
                 try:
                     con = rpyc.connect('localhost',datanodePorts[i])
-                    res = con.root.isReady()
-                    if res:
-                        con.root.heartbeat_recieve(datanode_blocks[i])
-                        con.close()
-                    else:
-                        raise Exception
+                    con.root.heartbeat_recieve(datanode_blocks[i])
+                    con.close()
+                    datanode_state[i] = True
                 except:
                     datanode_state[i]=False
         time.sleep(config["sync_period"])
