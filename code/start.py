@@ -61,7 +61,7 @@ namenodeProgramPath = 'code/namenode.py'
 datanodeProgramPath = 'code/datanode.py'
 
 namenodePort = get_free_tcp_port()
-namenode = subprocess.Popen(args=["python", namenodeProgramPath, str(namenodePort), config['dfs_setup_config']])
+namenode = subprocess.Popen(args=[config['python_command'], namenodeProgramPath, str(namenodePort), config['dfs_setup_config']])
 with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'w') as f:
     f.write(json.dumps({"port": namenodePort},indent=4))
 
@@ -90,7 +90,7 @@ for i in range(config["num_datanodes"]):
     datanodePortDetails[i] = freePort
 
     #python datanode.py datanode_id its_port config_path
-    datanodes[i] = subprocess.Popen(args=["python", datanodeProgramPath, str(i), str(freePort), config['dfs_setup_config']])
+    datanodes[i] = subprocess.Popen(args=[config['python_command'], datanodeProgramPath, str(i), str(freePort), config['dfs_setup_config']])
     
     print("DATANODE", i, "started at port", freePort, "with pid", datanodes[i].pid)
     time.sleep(0.5) #so that the port gets used before starting next datanode
@@ -134,7 +134,7 @@ try:
                 if not datanodes[i].poll(): #poll returns none if process is running, else returns 1
                     print("DATANODE", i,"already running")
                     continue
-                datanodes[i] = subprocess.Popen(args=["python", datanodeProgramPath, str(i), str(datanodePortDetails[i]), config['dfs_setup_config']], close_fds=True)
+                datanodes[i] = subprocess.Popen(args=[config['python_command'], datanodeProgramPath, str(i), str(datanodePortDetails[i]), config['dfs_setup_config']], close_fds=True)
                 time.sleep(0.5) #To make sure process gets started
                 print("DATANODE", i, "started at port", datanodePortDetails[i], "with pid", datanodes[i].pid)
             elif op == '2':
