@@ -177,6 +177,26 @@ def catCommand(args):
     if not res:
         printError("File doesn't exists")
         return
+    try:
+        if(args[1]=='>'):
+            destFile=args[2]
+            with open(destFile,'w') as f:
+                fileContent=namenode.root.getFile(absPath)
+                blocks=fileContent['blocks']
+                for i in blocks:
+                    blockID=i[0]
+                    dn1=i[1:]
+                    for i in dn1:
+                        con=rpyc.connect('localhost', namenode.root.returnPorts(i))
+                        res=con.root.read(blockID)
+                        con.close()
+                        if res:
+                            break
+                    f.write(res)
+            f.close()
+            return
+    except:
+        print("Printing to terminal...")
     fileContent=namenode.root.getFile(absPath)
     blocks=fileContent['blocks']
     for i in blocks:
@@ -185,10 +205,12 @@ def catCommand(args):
         for i in dn1:
             con=rpyc.connect('localhost', namenode.root.returnPorts(i))
             res=con.root.read(blockID)
+            con.close()
             if res:
                 break
         print(res,end='')   
     print()         
+    
 
 def exitCommand(args):
     print('exiting...')
