@@ -55,6 +55,16 @@ class DataNodeService(rpyc.Service):
             logger.error("Block {} write failed".format(block_id))
             return False
 
+    def exposed_read(self,block_id):
+        try:
+            with open(os.path.join(myDatanodePath, str(block_id)), "r") as f:
+                data=f.read()
+                logger.info("Block {} is read successfully".format(block_id))
+                return data
+        except:
+            logger.error("Block {} read failed".format(block_id))
+            return False
+
     #helper for write
     def forward(self, block_id, data, nextDatanodes):
         if len(nextDatanodes) == 0:
