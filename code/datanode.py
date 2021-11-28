@@ -81,6 +81,25 @@ class DataNodeService(rpyc.Service):
             logger.error("Block {} forward failed".format(block_id))
             return False
 
+    def exposed_heartbeat_recieve(self,blocks_possessed):
+        try:
+            block_list = os.listdir(myDatanodePath)
+            for block in block_list:
+                block_id,ext=block.split(".")
+                block_id=int(block_id)
+                if block_id not in blocks_possessed:
+                    self.delete_block(block)            
+        except:
+            logger.error("Unable to access the storage")
+
+
+    def get_block(self,datanode_data,block_id):
+        pass
+
+    def delete_block(self,block):
+        file_path=os.path.join(myDatanodePath, block)                    
+        os.remove(file_path)
+
 if __name__ == "__main__":
     t = ThreadedServer(DataNodeService, port=myPort)
     logger.info("Datanode ThreadedServer started on port %s", myPort)

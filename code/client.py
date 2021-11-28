@@ -212,6 +212,12 @@ def catCommand(args):
     print()         
     
 
+def rmCommand(args): #deletes the specified file
+    pass
+
+def rmdirCommand(args): #deletes the specified folder
+    pass
+
 def exitCommand(args):
     print('exiting...')
     exit()
@@ -221,7 +227,9 @@ funcs = {
     'cd': cdCommand,
     'mkdir': mkdirCommand,
     'put': putCommand,
-    'cat': catCommand
+    'cat': catCommand,
+    'rm': rmCommand,
+    'rmdir':rmdirCommand
 }
 
 def default(args):

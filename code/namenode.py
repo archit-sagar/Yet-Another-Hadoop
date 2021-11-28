@@ -8,6 +8,7 @@ import logging
 import signal
 import uuid
 import random
+import threading
 import time
 
 #python namenode.py its_port config_path
@@ -32,20 +33,35 @@ fs_image = {
     }
 }
 
+datanode_state=[]
+datanode_blocks={}
+for i in range(config["num_datanodes"]):
+    datanode_blocks[i]=[]
+    datanode_state.append(False)
+
+
 tempBlockDetails = {}
 
 #for each datanode, maintains num of available blocks {datanode_id: availableNum}
 datanodeDetails = {}
 datanodePorts = {}
 
+heart_beat_condition=False
+running=True
+
+
 #loading saved fs_image back to memory
 checkpointFilePath = os.path.join(config['namenode_checkpoints'], "checkpointFile")
 if os.path.exists(checkpointFilePath):
     try:
         with open(checkpointFilePath, 'rb') as f:
-            fs_image = pickle.load(f)
+            full_metadata = pickle.load(f)
+            fs_image=full_metadata[0]
+            datanode_blocks=full_metadata[1]
         logger.info("fs_image loaded from checkpoint")
         logger.info(fs_image)
+        logger.info("block details loaded from checkpoint")
+        logger.info(datanode_blocks)
     except:
         logger.error("Error loading fs_image checkpoint")
 
@@ -55,6 +71,7 @@ class NameNodeService(rpyc.Service):
     def exposed_registerDatanode(self, id, portNum, availableNum):
         datanodeDetails[id] = availableNum
         datanodePorts[id] = portNum
+        datanode_state[id]=True
         logger.info("Datanode %s registered", id)
         return True
 
@@ -163,18 +180,54 @@ class NameNodeService(rpyc.Service):
         row = tempBlockDetails.pop(block_id)
         file = self.getFile(absoluteFilePath)
         file['blocks'].append(row)
+        for i in range(1,len(row)):
+            datanode_blocks[row[i]].append(block_id)
         return
 
+    def exposed_start_heartbeat(self):
+        global heart_beat_condition
+        heart_beat_condition=True
+
+    def exposed_stop_heartbeat(self):
+        global heart_beat_condition
+        heart_beat_condition=False
+
+    def exposed_find_datanodes_for_block(self,blockid):
+        contact_datanodes=[]
+        for i in range(config["num_datanodes"]):
+            if blockid in datanode_blocks[i]:
+                contact_datanodes.append(datanodePorts[i])
+        return contact_datanodes
+
 def writeCheckPoints(signal, frame): #writes fs_image into checkpointFile
+    full_metadata=[fs_image,datanode_blocks]
     with open(checkpointFilePath, 'wb') as f:
-        pickle.dump(fs_image, f)
+        pickle.dump(full_metadata, f)
         logger.info("Fs_image written into Checkpoint")
+    global running
+    running=False
+    time.sleep(config["sync_period"])
     sys.exit()
+
+def sending_heartbeat():
+    while(running):
+        if heart_beat_condition:
+            for i in range(config["num_datanodes"]):
+                try:
+                    con = rpyc.connect('localhost',datanodePorts[i])
+                    con.root.heartbeat_recieve(datanode_blocks[i])
+                    con.close()
+                    datanode_state[i] = True
+                except:
+                    datanode_state[i]=False
+        time.sleep(config["sync_period"])
 
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, writeCheckPoints)
     t = ThreadedServer(NameNodeService, port=myPort)
+    heartbeat_thread = threading.Thread(target=sending_heartbeat)
+    heartbeat_thread.start()
     logger.info("Namenode ThreadedServer started on port %s", myPort)
     t.start()
 

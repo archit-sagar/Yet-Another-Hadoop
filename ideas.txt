@@ -20,9 +20,10 @@ file_table structure in namenode:
 
 {
 folders: {
-	foldername: {
+	foldername1: {
 		folders: {...},
-		files: {...}
+		files: {...},
+		metadata: {}
 	}
 },
 files: {
@@ -41,3 +42,7 @@ But, might add it in future, just to perform some initial checks on datanode (if
 as it is mentioned in assignment-pdf
 
 Might add metadata property for folders aswell, so it can be shown during ls. Metadata could be time of creation
+
+-----------------------------------------------
+ text1.txt 				|	12/43/2001 12:45PM
+ ewtoieroiwoir.txt 		|	12/43/2001 12:45PM
