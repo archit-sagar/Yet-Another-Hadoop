@@ -47,8 +47,6 @@ datanodeDetails = {}
 datanodePorts = {}
 
 heart_beat_condition=False
-running=True
-
 
 #loading saved fs_image back to memory
 checkpointFilePath = os.path.join(config['namenode_checkpoints'], "checkpointFile")
@@ -204,13 +202,10 @@ def writeCheckPoints(signal, frame): #writes fs_image into checkpointFile
     with open(checkpointFilePath, 'wb') as f:
         pickle.dump(full_metadata, f)
         logger.info("Fs_image written into Checkpoint")
-    global running
-    running=False
-    time.sleep(config["sync_period"])
     sys.exit()
 
 def sending_heartbeat():
-    while(running):
+    while(True):
         if heart_beat_condition:
             for i in range(config["num_datanodes"]):
                 try:
@@ -227,6 +222,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, writeCheckPoints)
     t = ThreadedServer(NameNodeService, port=myPort)
     heartbeat_thread = threading.Thread(target=sending_heartbeat)
+    heartbeat_thread.daemon = True
     heartbeat_thread.start()
     logger.info("Namenode ThreadedServer started on port %s", myPort)
     t.start()
