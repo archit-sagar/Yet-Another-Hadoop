@@ -85,8 +85,8 @@ class DataNodeService(rpyc.Service):
         try:
             block_list = os.listdir(myDatanodePath)
             for block in block_list:
-                block_id,ext=block.split(".")
-                block_id=int(block_id)
+                #block_id,ext=block.split(".")
+                block_id=int(block)
                 if block_id not in blocks_possessed:
                     self.delete_block(block)            
         except:
@@ -98,7 +98,11 @@ class DataNodeService(rpyc.Service):
 
     def delete_block(self,block):
         file_path=os.path.join(myDatanodePath, block)                    
-        os.remove(file_path)
+        try:
+            os.remove(file_path)
+            logger.info("Block {} is deleted successfully".format(block))
+        except:
+            logger.info("Block {} deletion failed".format(block))
 
 if __name__ == "__main__":
     t = ThreadedServer(DataNodeService, port=myPort)
