@@ -173,5 +173,3 @@ except:
     namenode.terminate()
     for datanode in datanodes:
         datanode.terminate()
-
-
