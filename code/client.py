@@ -213,10 +213,57 @@ def catCommand(args):
     
 
 def rmCommand(args): #deletes the specified file
-    pass
+    try:
+        path = args[0]
+        if not path:
+            raise Exception
+    except:
+        printError("File to be deleted needs to be specified")
+        return
+    fileLoc=path.split('/')
+    filename=fileLoc[-1]
+    parentFolderLoc=fileLoc[0:-1]
+    parentFolderPath = getAbsolutePath(str('/').join(parentFolderLoc))
+    if parentFolderPath==False:
+        printError("Path invalid")
+        return
+    filePath=parentFolderPath+'/'+filename
+    check = namenode.root.isFileExists(filePath)
+    if not check:
+        printError("File doesn't exists")
+        return
+    res=namenode.root.removeFile(filePath)
+    if res:
+        print('File successfully deleted')
+    else:
+        printError("File deletion unsuccessful")
 
 def rmdirCommand(args): #deletes the specified folder
-    pass
+    try:
+        path = args[0]
+        if not path:
+            raise Exception
+    except:
+        printError("Folder path is required")
+        return
+    absPath = getAbsolutePath(path)
+    if absPath == False:
+        printError("Path invalid")
+        return
+    if namenode.root.isFolderExists(absPath):
+        res = namenode.root.removeFolder(absPath)
+    else:
+        printError("Folder does not exist")
+        return
+    
+    if res==1:
+        print('Folder successfully deleted')
+    else:
+        if res==2:
+            print('Couldnt access folder')
+        if res==3:
+            print('Folder is not empty')
+        printError("Folder not removed")
 
 def exitCommand(args):
     print('exiting...')

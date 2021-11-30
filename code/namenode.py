@@ -182,6 +182,45 @@ class NameNodeService(rpyc.Service):
             datanode_blocks[row[i]].append(block_id)
         return
 
+    def folderRemovable(self,folder):
+        if folder == False:
+            return 2
+        if (folder['folders']=={}) and (folder["files"]=={}):
+            return 1
+        else:
+            return 3
+    
+    def exposed_removeFolder(self, absoluteFolderPath): #removes a folder for absoluteFolderPath, return true is successful deleteion or else false
+        folder = self.getFolder(absoluteFolderPath)
+        cond=self.folderRemovable(folder)
+        if cond==1:
+            splitPath = list(filter(lambda x: x, absoluteFolderPath.split("/")))
+            folderName = splitPath[-1]
+            parentFolderPath = str("/").join(splitPath[:-1])
+            parentFolder = self.getFolder(parentFolderPath)
+            parentFolder["folders"].pop(folderName)
+            return 1
+        else:
+            return cond
+
+    def exposed_removeFile(self, absoluteFilePath): #removes a folder for absoluteFolderPath, return true is successful deleteion or else false
+        fileData=self.getFile(absoluteFilePath)
+        blocks=fileData['blocks']
+        try:
+            for i in blocks:
+                blockID=i[0]
+                dns=i[1:]
+                for i in dns:  
+                    datanode_blocks[i].remove(blockID)
+            splitPath = list(filter(lambda x: x, absoluteFilePath.split("/")))
+            fileName = splitPath[-1]
+            parentFolderPath = str("/").join(splitPath[:-1])
+            parentFolder = self.getFolder(parentFolderPath)
+            parentFolder["files"].pop(fileName)
+            return True
+        except:
+            return False
+
     def exposed_start_heartbeat(self):
         global heart_beat_condition
         heart_beat_condition=True
