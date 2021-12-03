@@ -76,9 +76,20 @@ class NameNodeService(rpyc.Service):
     def exposed_getFolder(self, absoluteFolderPath):
         folder=self.getFolder(absoluteFolderPath)
         folder_names=[]
-        for i in folder.keys():
-            folder_names.append(folder.values())
-        return folder_names
+        fn=[]
+        if 'folders' in folder:
+            if folder.get('folders'):
+                folder_names.append(folder.get('folders'))
+        if 'files' in folder:
+            if folder.get('files'):
+                folder_names.append(folder.get('files'))
+        '''if 'metadata' in folder_names.keys():
+            if folder.get('metadata'):
+                folder_names.append(folder.get('metadata'))'''
+        for i in range(len(folder_names)):
+            fn.append(list(folder_names[i].keys())[0])
+            fn.append(folder_names[i].get('metadata'))
+        return fn
 
     def exposed_isFolderExists(self, absoluteFolderPath): #path: separated by / ex: a/b/c
         if self.getFolder(absoluteFolderPath):

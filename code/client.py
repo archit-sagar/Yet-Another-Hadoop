@@ -216,7 +216,6 @@ def lsCommand(args):
     for i in fnames:
         print(i)
 
-
 def exitCommand(args):
     print('exiting...')
     exit()
