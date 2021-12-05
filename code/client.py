@@ -194,30 +194,48 @@ def catCommand(args):
                 for i in blocks:
                     blockID=i[0]
                     dn1=i[1:]
+                    readStatus = False
                     for i in dn1:
-                        con=rpyc.connect('localhost', namenode.root.returnPorts(i))
-                        res=con.root.read(blockID)
-                        con.close()
-                        if res:
-                            break
-                    f.write(res)
-            f.close()
+                        try:
+                            con=rpyc.connect('localhost', namenode.root.returnPorts(i))
+                            res=con.root.read(blockID)
+                            con.close()
+                            if res != False:
+                                readStatus = True
+                                break
+                        except:
+                            continue
+                    if readStatus:
+                        f.write(res)
+                    else:
+                        print()
+                        printError("Read failed. Datanode unavailable")
             return
     except:
-        print("Printing to terminal...")
-    fileContent=namenode.root.getFile(absPath)
-    blocks=fileContent['blocks']
-    for i in blocks:
-        blockID=i[0]
-        dn1=i[1:]
-        for i in dn1:
-            con=rpyc.connect('localhost', namenode.root.returnPorts(i))
-            res=con.root.read(blockID)
-            con.close()
-            if res:
-                break
-        print(res,end='')   
-    print()         
+        # print("Printing to terminal...")
+        fileContent=namenode.root.getFile(absPath)
+        blocks=fileContent['blocks']
+        for i in blocks:
+            blockID=i[0]
+            dn1=i[1:]
+            readStatus = False
+            for i in dn1:
+                try:
+                    con=rpyc.connect('localhost', namenode.root.returnPorts(i))
+                    res=con.root.read(blockID)
+                    con.close()
+                    if res != False:
+                        readStatus = True
+                        break
+                except:
+                    continue
+            if readStatus:
+                print(res,end='') 
+            else:
+                print()
+                printError("Read failed. Datanode unavailable")
+                return
+        print()
     
 
 def rmCommand(args): #deletes the specified file
