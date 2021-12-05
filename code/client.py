@@ -122,9 +122,14 @@ def putCommand(args): #reads file from source and puts it to destination
         'size': fileSize,
         'createdTime': fileTime
     }
-    res = namenode.root.addFileEntry(absoluteFilePath, pickle.dumps(metaData))
+    res,mes = namenode.root.addFileEntry(absoluteFilePath, pickle.dumps(metaData))
     if not res:
-        printError("File already exists in given destination")
+        if mes == 1:
+            printError("File already exists in given destination")
+        elif mes == 2:
+            printError("Datanodes unavailable, try later")
+        elif mes == 3:
+            printError("No space available")
         return
     print("File entry added")
     #now start reding file, get allocated blocks, put data into blocks
@@ -136,6 +141,8 @@ def putCommand(args): #reads file from source and puts it to destination
             writeStatus = False
             for x in range(5): #if block storage fails, try 5 more times
                 row = namenode.root.allocateBlocks() #[block_id, dn1, dn2, dn3]
+                if row == False:
+                   break
                 blockId = row[0]
                 dn1 = row[1]
                 nextDns = row[2:]
@@ -154,8 +161,9 @@ def putCommand(args): #reads file from source and puts it to destination
                     print(e)
                     namenode.root.commitBlocks(blockId, False)
             if not writeStatus:
-                #failed to write even after 5 attempts
+                #failed to write even after 5 attempts or in between while allocating
                 #remove the half written file using rm command
+                namenode.root.removeFile(absoluteFilePath)
                 #show error
                 printError("Write Failed in between")
                 return
