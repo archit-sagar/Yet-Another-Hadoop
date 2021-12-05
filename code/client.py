@@ -4,6 +4,8 @@ import json
 import os
 import time
 import pickle
+from tabulate import tabulate
+import math
 
 fdata=open(sys.argv[1],"r")
 config=json.load(fdata)
@@ -237,6 +239,37 @@ def catCommand(args):
                 return
         print()
     
+        
+def sizeConvert(size):
+    if size==0:
+        return "0 B"
+    sizeNames = ["B", "KB", "MB", "GB", "TB"]
+    i = int(math.floor(math.log(size, 1024)))
+    p = math.pow(1024,i)
+    s = round(size/p,2)
+    return ("{0} {1}".format(s, sizeNames[i]))
+
+def mapper(fnames):
+    contents=[]
+    for i in fnames:
+        if (i[0]=='folder'):
+            contents.append((i[1],i[2],'<DIR>'))
+        if (i[0]=='files'):
+            contents.append((i[1],i[3],sizeConvert(i[2])))
+    return contents
+
+def lsCommand(args):
+    fnames=list(namenode.root.exposed_getContents(actualPath))
+    filedetails=mapper(fnames)
+    try:
+        if args[0]=='-d':
+                print(tabulate(filedetails,headers=['Name','CreatedTime','Size']))
+    except:
+        for i in fnames:
+            print(i[1])
+    print()
+
+        
 
 def rmCommand(args): #deletes the specified file
     try:
@@ -302,7 +335,8 @@ funcs = {
     'put': putCommand,
     'cat': catCommand,
     'rm': rmCommand,
-    'rmdir':rmdirCommand
+    'rmdir':rmdirCommand,
+    'ls': lsCommand
 }
 
 def default(args):

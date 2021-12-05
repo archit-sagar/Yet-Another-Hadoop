@@ -86,6 +86,18 @@ class NameNodeService(rpyc.Service):
                 return False
         return curFolder
     
+    def exposed_getContents(self, absoluteFolderPath):
+        folder=self.getFolder(absoluteFolderPath)
+        folder_names=[]
+        if ('folders' in folder.keys()):
+            for i in folder['folders']:
+                folder_time= time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(folder['folders'][i]['metadata']['createdTime']))
+                folder_names.append(('folder',i,folder_time))
+        if ('files' in folder.keys()):
+            for i in folder['files']:
+                file_time=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(folder['files'][i]['metadata']['createdTime']))
+                folder_names.append(('files',i,folder['files'][i]['metadata']['size'],file_time))
+        return folder_names
 
     def exposed_isFolderExists(self, absoluteFolderPath): #path: separated by / ex: a/b/c
         if self.getFolder(absoluteFolderPath):

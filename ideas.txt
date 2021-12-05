@@ -20,10 +20,10 @@ file_table structure in namenode:
 
 {
 folders: {
-	foldername1: {
+	foldername:{
 		folders: {...},
-		files: {...},
-		metadata: {}
+		files: {...}
+		metadata:{...}
 	}
 },
 files: {
