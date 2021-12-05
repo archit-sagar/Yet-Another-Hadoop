@@ -10,6 +10,7 @@ import socket
 import subprocess
 import time
 import rpyc
+import signal
 
 try:
     fdata=open(sys.argv[1],"r")
@@ -170,7 +171,11 @@ try:
                 continue
 except:
     print("Exiting...")
-    namenode.terminate()
+    namenode.send_signal(signal.CTRL_C_EVENT)
+    try:
+        namenode.wait()
+    except:
+        print("please wait")
     for datanode in datanodes:
         datanode.terminate()
 
