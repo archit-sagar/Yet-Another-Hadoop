@@ -88,6 +88,14 @@ class NameNodeService(rpyc.Service):
                 return False
         return curFolder
     
+    def exposed_getContents(self, absoluteFolderPath):
+        folder=self.getFolder(absoluteFolderPath)
+        name=[]
+        for i in folder['folders']:
+            name.append(('folder', i, folder['folders'][i]['metadata']))
+        for i in folder['files']:
+            name.append(('file', i, folder['files'][i]['metadata']))
+        return name
 
     def exposed_isFolderExists(self, absoluteFolderPath): #path: separated by / ex: a/b/c
         if self.getFolder(absoluteFolderPath):

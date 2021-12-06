@@ -4,6 +4,8 @@ import json
 import os
 import time
 import pickle
+import math
+from tabulate import tabulate
 
 fdata=open(sys.argv[1],"r")
 config=json.load(fdata)
@@ -209,8 +211,38 @@ def catCommand(args):
             if res:
                 break
         print(res,end='')   
-    print()         
-    
+    print()    
+
+def sizeConvert(size):
+    if size==0:
+        return "0 B"
+    sizeNames = ["B", "KB", "MB", "GB", "TB"]
+    i = int(math.floor(math.log(size, 1024)))
+    p = math.pow(1024,i)
+    s = round(size/p,2)
+    return ("{0} {1}".format(s, sizeNames[i]))
+
+def mapContents(names):
+    contents=[]
+    for i in names:
+        if i[0]=='folder':
+            folderTime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(i[2]['createdTime']))
+            contents.append((i[1],folderTime, '<DIR>'))
+        elif i[0]=='file':
+            fileTime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(i[2]['createdTime']))
+            contents.append((i[1], fileTime, sizeConvert(i[2]['size'])))
+    return contents
+
+def lsCommand(args):
+    names=namenode.root.exposed_getContents(actualPath)
+    mappedContents = mapContents(names)
+    try:
+        if args[0]=='-d':
+            print(tabulate(mappedContents, headers=['Name', 'Created Time', 'Size']))
+    except:
+        for i in names:
+            print(i[1], end='\t')
+    print()
 
 def rmCommand(args): #deletes the specified file
     try:
@@ -276,7 +308,8 @@ funcs = {
     'put': putCommand,
     'cat': catCommand,
     'rm': rmCommand,
-    'rmdir':rmdirCommand
+    'rmdir':rmdirCommand,
+    'ls':lsCommand
 }
 
 def default(args):
