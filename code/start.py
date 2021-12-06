@@ -58,13 +58,31 @@ def get_free_tcp_port():
     tcp.close()
     return port
 
+def write_pids(config,pids):
+    with  open(os.path.join(config["path_to_namenodes"], "pids.json"), 'w') as f:
+        f.write(json.dumps(pids,indent=4))
+
+def read_pids(config):
+    with  open(os.path.join(config["path_to_namenodes"], "pids.json"), 'r') as f:
+        pids= json.load(f)
+    return pids
+
+def full_terminate(config):
+    pids=read_pids(config)
+    for i in pids.values():
+        os.kill(i, signal.CTRL_C_EVENT)
+
 namenodeProgramPath = 'code/namenode.py'
 datanodeProgramPath = 'code/datanode.py'
 
 namenodePort = get_free_tcp_port()
-namenode = subprocess.Popen(args=[config['python_command'], namenodeProgramPath, str(namenodePort), config['dfs_setup_config']])
+namenode = subprocess.Popen(args=[config['python_command'], namenodeProgramPath, str(namenodePort), config['dfs_setup_config'], "p"])
 with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'w') as f:
     f.write(json.dumps({"port": namenodePort},indent=4))
+
+pids={}
+pids["n"]=namenode.pid
+write_pids(config,pids)
 
 print("NAMENODE started at port", namenodePort, "with pid", namenode.pid)
 time.sleep(1)
@@ -80,7 +98,7 @@ try:
         raise Exception
 except:
     print("NAMENODE FAILED")
-    namenode.terminate()
+    full_terminate(config)
     exit()
 
 datanodePortDetails = {}
@@ -92,10 +110,14 @@ for i in range(config["num_datanodes"]):
 
     #python datanode.py datanode_id its_port config_path
     datanodes[i] = subprocess.Popen(args=[config['python_command'], datanodeProgramPath, str(i), str(freePort), config['dfs_setup_config']])
-    
     print("DATANODE", i, "started at port", freePort, "with pid", datanodes[i].pid)
     time.sleep(0.5) #so that the port gets used before starting next datanode
 
+pids=read_pids(config)
+for i in range(len(datanodes)):
+    s=str(i)
+    pids[s]=datanodes[i].pid
+write_pids(config,pids)
 
 try:
     for i in range(config['num_datanodes']):
@@ -110,10 +132,7 @@ try:
 except:
     print("DATANODE", i,"FAILED")
     #terminating datanodes
-    for i in range(config['num_datanodes']):
-        datanodes[i].terminate()
-    #ternimating namenode
-    namenode.terminate()
+    full_terminate(config)
     exit()
 
 
@@ -127,18 +146,15 @@ try:
         raise Exception
 except:
     print("NAMENODE FAILED")
-    for i in range(config['num_datanodes']):
-        datanodes[i].terminate()
-    namenode.terminate()
+    full_terminate(config)
     exit()
 
 
 
 try:
     if not debugMode:
-        namenode.wait()
-        for datanode in datanodes:
-            datanode.wait()
+        while(True):
+            time.sleep(1)
     else:
         while True:
             print("1: Start DataNode\n2: Stop Datanode\n0: Exit")
@@ -171,12 +187,8 @@ try:
                 continue
 except:
     print("Exiting...")
-    namenode.send_signal(signal.CTRL_C_EVENT)
     try:
-        namenode.wait()
+        full_terminate(config)
     except:
-        print("please wait")
-    for datanode in datanodes:
-        datanode.terminate()
-
+        print("exited")    
 
