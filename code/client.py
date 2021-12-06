@@ -4,13 +4,8 @@ import json
 import os
 import time
 import pickle
-<<<<<<< HEAD
-import math
-from tabulate import tabulate
-=======
 from tabulate import tabulate
 import math
->>>>>>> origin/latest-branch
 
 fdata=open(sys.argv[1],"r")
 config=json.load(fdata)
@@ -219,23 +214,6 @@ def catCommand(args):
                         printError("Read failed. Datanode unavailable")
             return
     except:
-<<<<<<< HEAD
-        print("Printing to terminal...")
-    fileContent=namenode.root.getFile(absPath)
-    blocks=fileContent['blocks']
-    for i in blocks:
-        blockID=i[0]
-        dn1=i[1:]
-        for i in dn1:
-            con=rpyc.connect('localhost', namenode.root.returnPorts(i))
-            res=con.root.read(blockID)
-            con.close()
-            if res:
-                break
-        print(res,end='')   
-    print()    
-
-=======
         # print("Printing to terminal...")
         fileContent=namenode.root.getFile(absPath)
         blocks=fileContent['blocks']
@@ -262,7 +240,6 @@ def catCommand(args):
         print()
     
         
->>>>>>> origin/latest-branch
 def sizeConvert(size):
     if size==0:
         return "0 B"
@@ -272,29 +249,6 @@ def sizeConvert(size):
     s = round(size/p,2)
     return ("{0} {1}".format(s, sizeNames[i]))
 
-<<<<<<< HEAD
-def mapContents(names):
-    contents=[]
-    for i in names:
-        if i[0]=='folder':
-            folderTime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(i[2]['createdTime']))
-            contents.append((i[1],folderTime, '<DIR>'))
-        elif i[0]=='file':
-            fileTime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(i[2]['createdTime']))
-            contents.append((i[1], fileTime, sizeConvert(i[2]['size'])))
-    return contents
-
-def lsCommand(args):
-    names=namenode.root.exposed_getContents(actualPath)
-    mappedContents = mapContents(names)
-    try:
-        if args[0]=='-d':
-            print(tabulate(mappedContents, headers=['Name', 'Created Time', 'Size']))
-    except:
-        for i in names:
-            print(i[1], end='\t')
-    print()
-=======
 def mapper(fnames):
     contents=[]
     for i in fnames:
@@ -316,7 +270,6 @@ def lsCommand(args):
     print()
 
         
->>>>>>> origin/latest-branch
 
 def rmCommand(args): #deletes the specified file
     try:
@@ -383,11 +336,7 @@ funcs = {
     'cat': catCommand,
     'rm': rmCommand,
     'rmdir':rmdirCommand,
-<<<<<<< HEAD
-    'ls':lsCommand
-=======
     'ls': lsCommand
->>>>>>> origin/latest-branch
 }
 
 def default(args):
