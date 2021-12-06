@@ -88,14 +88,6 @@ class NameNodeService(rpyc.Service):
     
     def exposed_getContents(self, absoluteFolderPath):
         folder=self.getFolder(absoluteFolderPath)
-<<<<<<< HEAD
-        name=[]
-        for i in folder['folders']:
-            name.append(('folder', i, folder['folders'][i]['metadata']))
-        for i in folder['files']:
-            name.append(('file', i, folder['files'][i]['metadata']))
-        return name
-=======
         folder_names=[]
         if ('folders' in folder.keys()):
             for i in folder['folders']:
@@ -106,7 +98,6 @@ class NameNodeService(rpyc.Service):
                 file_time=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(folder['files'][i]['metadata']['createdTime']))
                 folder_names.append(('files',i,folder['files'][i]['metadata']['size'],file_time))
         return folder_names
->>>>>>> origin/latest-branch
 
     def exposed_isFolderExists(self, absoluteFolderPath): #path: separated by / ex: a/b/c
         if self.getFolder(absoluteFolderPath):

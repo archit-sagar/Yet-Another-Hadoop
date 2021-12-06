@@ -9,7 +9,46 @@ try:
     fdata.close()
 except:
     print("Error reading config file!")
-    exit()
+    sys.exit()
+
+#checking if all the required fields are there in the configuration file
+try:
+    if 'block_size' not in config.keys():
+        config['block_size'] = 512
+        print("Block size was not specified. Using default value of 512 bytes.")
+    if 'replication_factor' not in config.keys():
+        config['replication_factor'] = 3
+        print("Replication factor was not specified. Using default value of 3.")
+    if 'num_datanodes' not in config.keys():
+        config['num_datanodes'] = 4
+        print("Number of datanodes not specified. Using default value of 4.")
+    if 'datanode_size' not in config.keys():
+        config['datanode_size'] = 30
+        print('Size of datanode was not specified. Using default value of 30.')
+    if 'sync_period' not in config.keys():
+        config['sync_period'] = 10
+        print('Sync period was not specified. Using default value of 10.')
+    if 'fs_path' not in config.keys():
+        config['fs_path'] = "user/home/"
+        print("FS Path was not specified. Using default value of 'user/home/'")
+    if 'python_command' not in config.keys():
+        config['python_command'] = 'python'
+        print("Python command was not found. Using default value 'python'.")
+except:
+    pass
+
+if 'path_to_datanodes' not in config.keys():
+    sys.exit('Path to datanodes not specified. Exiting...')
+if 'path_to_namenodes' not in config.keys():
+    sys.exit('Path to namenodes not specified. Exiting...')
+if 'datanode_log_path' not in config.keys():
+    sys.exit('Datanode log path not specified. Exiting...')
+if 'namenode_log_path' not in config.keys():
+    sys.exit('Namenode log path not specified. Exiting...')
+if 'namenode_checkpoints' not in config.keys():
+    sys.exit('Namenode checkpoints path not specified. Exiting...')
+if 'dfs_setup_config' not in config.keys():
+    sys.exit('DFS Setup config file path not specified. Exiting...')
 
 
 directory=config["path_to_datanodes"]
