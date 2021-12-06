@@ -179,9 +179,13 @@ def catCommand(args):
     filename=fileLoc[-1]
     filePath=fileLoc[0:-1]
     absPath = getAbsolutePath(str('/').join(filePath))
-    absPath=absPath+'/'+filename
     if absPath == False:
         printError("Path invalid")
+        return
+    try:
+        absPath=absPath+'/'+filename
+    except:
+        printError("File doesn't exists")
         return
     res = namenode.root.isFileExists(absPath)
     if not res:
@@ -266,10 +270,9 @@ def lsCommand(args):
                 print(tabulate(filedetails,headers=['Name','CreatedTime','Size']))
     except:
         for i in fnames:
-            print(i[1])
-    print()
+            print(i[1], end='\t')
+        print()
 
-        
 
 def rmCommand(args): #deletes the specified file
     try:

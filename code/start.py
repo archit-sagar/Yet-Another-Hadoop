@@ -178,5 +178,3 @@ except:
         print("please wait")
     for datanode in datanodes:
         datanode.terminate()
-
-
