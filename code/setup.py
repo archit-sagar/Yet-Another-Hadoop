@@ -35,7 +35,7 @@ try:
         config['python_command'] = 'python'
         print("Python command was not found. Using default value 'python'.")
 except:
-    pass
+    exit()
 
 if 'path_to_datanodes' not in config.keys():
     sys.exit('Path to datanodes not specified. Exiting...')
@@ -52,6 +52,19 @@ if 'dfs_setup_config' not in config.keys():
 
 
 directory=config["path_to_datanodes"]
+if not os.path.isdir(directory):
+    sys.exit('Path to datanodes was not a directory. Exiting...')
+if not os.path.isdir(config['datanode_log_path']):
+    sys.exit('Datanode log path was not a directory. Exiting...')
+if not os.path.isdir(config['namenode_checkpoints']):
+    sys.exit('Namenode checkpoints was not a directory. Exiting...')
+if not os.path.isfile(config['namenode_log_path']):
+    sys.exit('Namenode log path was not a file. Exiting...')
+if not os.path.isdir(config["path_to_namenodes"]):
+    sys.exit('Path to namenodes was not a directory. Exiting...')
+if config['num_datanodes']<config['replication_factor']:
+    sys.exit("Number of datanodes were not sufficient. Exiting...")
+
 try:
     for i in range(config["num_datanodes"]):
         path=os.path.join(directory,str(i))
