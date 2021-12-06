@@ -10,6 +10,7 @@ import uuid
 import random
 import threading
 import time
+import math
 
 #python namenode.py its_port config_path
 myPort = int(sys.argv[1])
@@ -33,11 +34,9 @@ fs_image = {
     }
 }
 
-datanode_state=[]
 datanode_blocks={}
 for i in range(config["num_datanodes"]):
     datanode_blocks[i]=[]
-    datanode_state.append(False)
 
 
 tempBlockDetails = {}
@@ -69,7 +68,6 @@ class NameNodeService(rpyc.Service):
     def exposed_registerDatanode(self, id, portNum, availableNum):
         datanodeDetails[id] = availableNum
         datanodePorts[id] = portNum
-        datanode_state[id]=True
         logger.info("Datanode %s registered", id)
         return True
 
@@ -90,12 +88,25 @@ class NameNodeService(rpyc.Service):
     
     def exposed_getContents(self, absoluteFolderPath):
         folder=self.getFolder(absoluteFolderPath)
+<<<<<<< HEAD
         name=[]
         for i in folder['folders']:
             name.append(('folder', i, folder['folders'][i]['metadata']))
         for i in folder['files']:
             name.append(('file', i, folder['files'][i]['metadata']))
         return name
+=======
+        folder_names=[]
+        if ('folders' in folder.keys()):
+            for i in folder['folders']:
+                folder_time= time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(folder['folders'][i]['metadata']['createdTime']))
+                folder_names.append(('folder',i,folder_time))
+        if ('files' in folder.keys()):
+            for i in folder['files']:
+                file_time=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(folder['files'][i]['metadata']['createdTime']))
+                folder_names.append(('files',i,folder['files'][i]['metadata']['size'],file_time))
+        return folder_names
+>>>>>>> origin/latest-branch
 
     def exposed_isFolderExists(self, absoluteFolderPath): #path: separated by / ex: a/b/c
         if self.getFolder(absoluteFolderPath):
@@ -147,7 +158,20 @@ class NameNodeService(rpyc.Service):
     def exposed_addFileEntry(self, absoluteFilePath, meta): #adds file entry, return true. Else return false
         meta = pickle.loads(meta) #objects must be passed as pickled, to preserve their type
         if self.exposed_isFileExists(absoluteFilePath):
-            return False
+            return (False, 1) #file already exists
+        n = config['replication_factor']
+        logger.info(datanodeDetails)
+        if len(datanodeDetails.keys()) < n:
+            return (False, 2) #Min datanodes unavailable, try later
+        nonZeroDatanodes = {k:v for (k,v) in datanodeDetails.items() if v>0}
+        if len(nonZeroDatanodes.keys()) < n:
+            return (False,3) #No space available
+        reqBlocks = math.ceil(meta['size']/config['block_size'])
+        minBlocksPerNode = math.ceil((reqBlocks*n)/len(nonZeroDatanodes.keys()))
+        #checks if all available nodes have minimum blocks available
+        for v in nonZeroDatanodes.values():
+            if v < minBlocksPerNode:
+                return (False,3) #no space available
         splitPath = list(filter(lambda x: x, absoluteFilePath.split("/")))
         fileName = splitPath[-1]
         folderPath = splitPath[:-1]
@@ -158,21 +182,26 @@ class NameNodeService(rpyc.Service):
             "blocks": []
         }
         logger.info("Added new file {} ".format(absoluteFilePath))
-        return True
+        return (True,1)
 
     def exposed_allocateBlocks(self):
-        randId = uuid.uuid1().int
         #for now, allocating datanodes randomly
-        #as of now, I'm not checking if space available or not, will add it later
+        #this checking will be unnesessary in most cases
+        nonZeroDatanodes = {k:v for (k,v) in datanodeDetails.items() if v>0}
         n = config['replication_factor']
+        if len(nonZeroDatanodes.keys()) < n:
+            return False #Min datanodes unavailable, try later
+        randId = uuid.uuid1().int
         rowToSend = [randId] #with port numbers of datanodes
         rowToStore = [randId] #with id of datanodes
-        available = {i for i in datanodeDetails.keys()} #later may add other variable called as active datanodes and use it
-        for i in range(n):
-            ch = random.choice(list(available))
-            rowToStore.append(ch)
-            available.remove(ch)
-            rowToSend.append(datanodePorts[ch])
+        #nodes are choosen based on available blocks (more available blocks, gets choosen first)
+        #shuffle because, to avoid same node being primary
+        choosenDnodes = [i for (i,j) in sorted(nonZeroDatanodes.items(), key=lambda item: item[1], reverse=True)[:n]]
+        random.shuffle(choosenDnodes)
+        logger.info('allocated nodes {}'.format(choosenDnodes))
+        for i in choosenDnodes:
+            rowToStore.append(i)
+            rowToSend.append(datanodePorts[i])
             # datanodeDetails[ch] -= 1
             #not changing, availableNum as of now, will do later
         tempBlockDetails[randId] = rowToStore
@@ -188,6 +217,7 @@ class NameNodeService(rpyc.Service):
         file['blocks'].append(row)
         for i in range(1,len(row)):
             datanode_blocks[row[i]].append(block_id)
+            datanodeDetails[row[i]] -= 1
         return
 
     def folderRemovable(self,folder):
@@ -259,9 +289,10 @@ def sending_heartbeat():
                     con = rpyc.connect('localhost',datanodePorts[i])
                     con.root.heartbeat_recieve(datanode_blocks[i])
                     con.close()
-                    datanode_state[i] = True
+                    datanodeDetails[i] = config['datanode_size'] - len(datanode_blocks[i]) #availableNum
                 except:
-                    datanode_state[i]=False
+                    if i in datanodeDetails:
+                        datanodeDetails.pop(i)
         time.sleep(config["sync_period"])
 
 

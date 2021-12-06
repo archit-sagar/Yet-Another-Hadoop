@@ -4,8 +4,13 @@ import json
 import os
 import time
 import pickle
+<<<<<<< HEAD
 import math
 from tabulate import tabulate
+=======
+from tabulate import tabulate
+import math
+>>>>>>> origin/latest-branch
 
 fdata=open(sys.argv[1],"r")
 config=json.load(fdata)
@@ -124,9 +129,14 @@ def putCommand(args): #reads file from source and puts it to destination
         'size': fileSize,
         'createdTime': fileTime
     }
-    res = namenode.root.addFileEntry(absoluteFilePath, pickle.dumps(metaData))
+    res,mes = namenode.root.addFileEntry(absoluteFilePath, pickle.dumps(metaData))
     if not res:
-        printError("File already exists in given destination")
+        if mes == 1:
+            printError("File already exists in given destination")
+        elif mes == 2:
+            printError("Datanodes unavailable, try later")
+        elif mes == 3:
+            printError("No space available")
         return
     print("File entry added")
     #now start reding file, get allocated blocks, put data into blocks
@@ -138,6 +148,8 @@ def putCommand(args): #reads file from source and puts it to destination
             writeStatus = False
             for x in range(5): #if block storage fails, try 5 more times
                 row = namenode.root.allocateBlocks() #[block_id, dn1, dn2, dn3]
+                if row == False:
+                   break
                 blockId = row[0]
                 dn1 = row[1]
                 nextDns = row[2:]
@@ -156,8 +168,9 @@ def putCommand(args): #reads file from source and puts it to destination
                     print(e)
                     namenode.root.commitBlocks(blockId, False)
             if not writeStatus:
-                #failed to write even after 5 attempts
+                #failed to write even after 5 attempts or in between while allocating
                 #remove the half written file using rm command
+                namenode.root.removeFile(absoluteFilePath)
                 #show error
                 printError("Write Failed in between")
                 return
@@ -188,16 +201,25 @@ def catCommand(args):
                 for i in blocks:
                     blockID=i[0]
                     dn1=i[1:]
+                    readStatus = False
                     for i in dn1:
-                        con=rpyc.connect('localhost', namenode.root.returnPorts(i))
-                        res=con.root.read(blockID)
-                        con.close()
-                        if res:
-                            break
-                    f.write(res)
-            f.close()
+                        try:
+                            con=rpyc.connect('localhost', namenode.root.returnPorts(i))
+                            res=con.root.read(blockID)
+                            con.close()
+                            if res != False:
+                                readStatus = True
+                                break
+                        except:
+                            continue
+                    if readStatus:
+                        f.write(res)
+                    else:
+                        print()
+                        printError("Read failed. Datanode unavailable")
             return
     except:
+<<<<<<< HEAD
         print("Printing to terminal...")
     fileContent=namenode.root.getFile(absPath)
     blocks=fileContent['blocks']
@@ -213,6 +235,34 @@ def catCommand(args):
         print(res,end='')   
     print()    
 
+=======
+        # print("Printing to terminal...")
+        fileContent=namenode.root.getFile(absPath)
+        blocks=fileContent['blocks']
+        for i in blocks:
+            blockID=i[0]
+            dn1=i[1:]
+            readStatus = False
+            for i in dn1:
+                try:
+                    con=rpyc.connect('localhost', namenode.root.returnPorts(i))
+                    res=con.root.read(blockID)
+                    con.close()
+                    if res != False:
+                        readStatus = True
+                        break
+                except:
+                    continue
+            if readStatus:
+                print(res,end='') 
+            else:
+                print()
+                printError("Read failed. Datanode unavailable")
+                return
+        print()
+    
+        
+>>>>>>> origin/latest-branch
 def sizeConvert(size):
     if size==0:
         return "0 B"
@@ -222,6 +272,7 @@ def sizeConvert(size):
     s = round(size/p,2)
     return ("{0} {1}".format(s, sizeNames[i]))
 
+<<<<<<< HEAD
 def mapContents(names):
     contents=[]
     for i in names:
@@ -243,6 +294,29 @@ def lsCommand(args):
         for i in names:
             print(i[1], end='\t')
     print()
+=======
+def mapper(fnames):
+    contents=[]
+    for i in fnames:
+        if (i[0]=='folder'):
+            contents.append((i[1],i[2],'<DIR>'))
+        if (i[0]=='files'):
+            contents.append((i[1],i[3],sizeConvert(i[2])))
+    return contents
+
+def lsCommand(args):
+    fnames=list(namenode.root.exposed_getContents(actualPath))
+    filedetails=mapper(fnames)
+    try:
+        if args[0]=='-d':
+                print(tabulate(filedetails,headers=['Name','CreatedTime','Size']))
+    except:
+        for i in fnames:
+            print(i[1])
+    print()
+
+        
+>>>>>>> origin/latest-branch
 
 def rmCommand(args): #deletes the specified file
     try:
@@ -309,7 +383,11 @@ funcs = {
     'cat': catCommand,
     'rm': rmCommand,
     'rmdir':rmdirCommand,
+<<<<<<< HEAD
     'ls':lsCommand
+=======
+    'ls': lsCommand
+>>>>>>> origin/latest-branch
 }
 
 def default(args):
