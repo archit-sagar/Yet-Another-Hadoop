@@ -131,6 +131,12 @@ class DataNodeService(rpyc.Service):
         except:
             logger.info("Block {} deletion failed".format(block))
 
+    def exposed_new_namenode(self):
+        global namenodePort
+        with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
+            namenodePort = json.load(f)["port"] #port (int)
+
+
 if __name__ == "__main__":
     t = ThreadedServer(DataNodeService, port=myPort)
     logger.info("Datanode ThreadedServer started on port %s", myPort)

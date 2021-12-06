@@ -14,17 +14,19 @@ fdata.close()
 basePath = config["fs_path"].rstrip("/") #/myDFS/ -> /myDFS
 actualPath = ''
 
-with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
-    namenodePort = json.load(f)["port"] #port (int)
+def get_namenode():
+    with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
+        namenodePort = json.load(f)["port"] #port (int)
 
 
-try:
-    namenode = rpyc.connect("localhost", namenodePort)
-    if not namenode.root.isReady():
-        raise Exception
-except:
-    print("Namenode connection failed")
-    exit()
+    try:
+        namenode = rpyc.connect("localhost", namenodePort)
+        if not namenode.root.isReady():
+            raise Exception
+        return namenode
+    except:
+        print("Namenode connection failed")
+        exit()
 
 def printError(msg):
     print("Error: {}".format(msg))
@@ -66,7 +68,7 @@ def cdCommand(args): #it validates if folder exists, if true then changes the ac
     if absPath == False:
         printError("Path invalid")
         return
-    res = namenode.root.isFolderExists(absPath)
+    res = get_namenode().root.isFolderExists(absPath)
     if res:
         actualPath = absPath
     else:
@@ -84,10 +86,10 @@ def mkdirCommand(args): #creates a dir if not already exists
     if absPath == False:
         printError("Path invalid")
         return
-    if namenode.root.isFolderExists(absPath):
+    if get_namenode().root.isFolderExists(absPath):
         printError("Folder already exists")
         return
-    res = namenode.root.addFolder(absPath)
+    res = get_namenode().root.addFolder(absPath)
     if res:
         print('New Folder created')
     else:
@@ -113,7 +115,7 @@ def putCommand(args): #reads file from source and puts it to destination
     if absoluteDestPath == False:
         printError("Invalid Destination Path")
         return
-    if not namenode.root.isFolderExists(absoluteDestPath):
+    if not get_namenode().root.isFolderExists(absoluteDestPath):
         printError("Destination folder doesn't exists")
         return
     fileName = sourcePath.strip('/').split('/')[-1] #getting last value
@@ -124,7 +126,7 @@ def putCommand(args): #reads file from source and puts it to destination
         'size': fileSize,
         'createdTime': fileTime
     }
-    res,mes = namenode.root.addFileEntry(absoluteFilePath, pickle.dumps(metaData))
+    res,mes = get_namenode().root.addFileEntry(absoluteFilePath, pickle.dumps(metaData))
     if not res:
         if mes == 1:
             printError("File already exists in given destination")
@@ -142,7 +144,7 @@ def putCommand(args): #reads file from source and puts it to destination
             data = f.read(config['block_size'])
             writeStatus = False
             for x in range(5): #if block storage fails, try 5 more times
-                row = namenode.root.allocateBlocks() #[block_id, dn1, dn2, dn3]
+                row = get_namenode().root.allocateBlocks() #[block_id, dn1, dn2, dn3]
                 if row == False:
                    break
                 blockId = row[0]
@@ -153,19 +155,19 @@ def putCommand(args): #reads file from source and puts it to destination
                     res = con.root.recursiveWrite(blockId, data, nextDns)
                     con.close()
                     if res:
-                        namenode.root.commitBlocks(blockId, True, absoluteFilePath)
+                        get_namenode().root.commitBlocks(blockId, True, absoluteFilePath)
                         writeStatus = True
                         blockCount+=1
                         break
                     else:
-                        namenode.root.commitBlocks(blockId, False)
+                        get_namenode().root.commitBlocks(blockId, False)
                 except Exception as e:
                     print(e)
-                    namenode.root.commitBlocks(blockId, False)
+                    get_namenode().root.commitBlocks(blockId, False)
             if not writeStatus:
                 #failed to write even after 5 attempts or in between while allocating
                 #remove the half written file using rm command
-                namenode.root.removeFile(absoluteFilePath)
+                get_namenode().root.removeFile(absoluteFilePath)
                 #show error
                 printError("Write Failed in between")
                 return
@@ -187,7 +189,7 @@ def catCommand(args):
     except:
         printError("File doesn't exists")
         return
-    res = namenode.root.isFileExists(absPath)
+    res = get_namenode().root.isFileExists(absPath)
     if not res:
         printError("File doesn't exists")
         return
@@ -195,7 +197,7 @@ def catCommand(args):
         if(args[1]=='>'):
             destFile=args[2]
             with open(destFile,'w') as f:
-                fileContent=namenode.root.getFile(absPath)
+                fileContent=get_namenode().root.getFile(absPath)
                 blocks=fileContent['blocks']
                 for i in blocks:
                     blockID=i[0]
@@ -203,7 +205,7 @@ def catCommand(args):
                     readStatus = False
                     for i in dn1:
                         try:
-                            con=rpyc.connect('localhost', namenode.root.returnPorts(i))
+                            con=rpyc.connect('localhost', get_namenode().root.returnPorts(i))
                             res=con.root.read(blockID)
                             con.close()
                             if res != False:
@@ -219,7 +221,7 @@ def catCommand(args):
             return
     except:
         # print("Printing to terminal...")
-        fileContent=namenode.root.getFile(absPath)
+        fileContent=get_namenode().root.getFile(absPath)
         blocks=fileContent['blocks']
         for i in blocks:
             blockID=i[0]
@@ -227,7 +229,7 @@ def catCommand(args):
             readStatus = False
             for i in dn1:
                 try:
-                    con=rpyc.connect('localhost', namenode.root.returnPorts(i))
+                    con=rpyc.connect('localhost', get_namenode().root.returnPorts(i))
                     res=con.root.read(blockID)
                     con.close()
                     if res != False:
@@ -263,7 +265,7 @@ def mapper(fnames):
     return contents
 
 def lsCommand(args):
-    fnames=list(namenode.root.exposed_getContents(actualPath))
+    fnames=list(get_namenode().root.exposed_getContents(actualPath))
     filedetails=mapper(fnames)
     try:
         if args[0]=='-d':
@@ -290,11 +292,11 @@ def rmCommand(args): #deletes the specified file
         printError("Path invalid")
         return
     filePath=parentFolderPath+'/'+filename
-    check = namenode.root.isFileExists(filePath)
+    check = get_namenode().root.isFileExists(filePath)
     if not check:
         printError("File doesn't exists")
         return
-    res=namenode.root.removeFile(filePath)
+    res=get_namenode().root.removeFile(filePath)
     if res:
         print('File successfully deleted')
     else:
@@ -312,8 +314,8 @@ def rmdirCommand(args): #deletes the specified folder
     if absPath == False:
         printError("Path invalid")
         return
-    if namenode.root.isFolderExists(absPath):
-        res = namenode.root.removeFolder(absPath)
+    if get_namenode().root.isFolderExists(absPath):
+        res = get_namenode().root.removeFolder(absPath)
     else:
         printError("Folder does not exist")
         return
