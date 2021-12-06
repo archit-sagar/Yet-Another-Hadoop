@@ -19,22 +19,20 @@ At each heartbeat from datanode (an rpc call from namenode to that datanode, lik
 file_table structure in namenode:
 
 {
-folders: {
-	foldername:{
-		folders: {...},
-		files: {...}
-		metadata:{...}
-	}
-},
-files: {
-	filename1: {
-			metadata: {...},
-			blocks: [][]
-			(each row is for different block. Ex: block1 of file => row1)
-			(each row: [block_id, datanode1_id, datanode2_id, datanode3_id])
-			(This is because, block_id can be same for particular block on different machines)
+	folders: {
+		foldername:{
+			folders: {...},
+			files: {...}
+			metadata:{...}
 		}
-}
+	},
+	files: {
+		filename1: {
+				metadata: {...},
+				blocks: [][]
+				(each row: [block_id, datanode1_id, datanode2_id, datanode3_id])
+			}
+	}
 }
 
 I removed storing list of used block_id per datanode, thinking it as unnecessary.
