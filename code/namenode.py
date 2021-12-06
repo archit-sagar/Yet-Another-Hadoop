@@ -263,7 +263,7 @@ class NameNodeService(rpyc.Service):
         for i in range(config["num_datanodes"]):
             if blockid in datanode_blocks[i]:
                 contact_datanodes.append(datanodePorts[i])
-        return contact_datanodes
+        return pickle.dumps(contact_datanodes)
 
 def writeCheckPoints(signal, frame): #writes fs_image into checkpointFile
     full_metadata=[fs_image,datanode_blocks]
