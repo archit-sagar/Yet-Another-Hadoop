@@ -101,8 +101,7 @@ class DataNodeService(rpyc.Service):
     def get_block(self,block_id):
         try:
             namenode = rpyc.connect('localhost', namenodePort, keepalive=True)
-            c_nodes = namenode.root.find_datanodes_for_block(block_id)
-            contact_nodes = pickle.loads(c_nodes)
+            contact_nodes = list(namenode.root.find_datanodes_for_block(block_id))
             namenode.close()
             for dport in contact_nodes:
                 if dport == myPort: continue
