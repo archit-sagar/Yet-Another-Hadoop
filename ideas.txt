@@ -46,3 +46,21 @@ Might add metadata property for folders aswell, so it can be shown during ls. Me
 -----------------------------------------------
  text1.txt 				|	12/43/2001 12:45PM
  ewtoieroiwoir.txt 		|	12/43/2001 12:45PM
+
+namenode.py
+def exposed_getFolder(self, absoluteFolderPath):
+        folder=self.getFolder(absoluteFolderPath)
+        names=[]
+		if 'folders' in folder.keys():
+			for i in folder['folders']:
+				name.append(('folder', i, (i[metadata])[createdTime]))
+		if 'files' in folder:
+			for i in folder['files']:
+				name.append(('file', i, (i[metadata])[createdTime]))
+		return name
+
+client.py
+def lsCommand():
+	name=namenode.root.exposed_getFolder(actualPath)
+	for i in name:
+		print(i)

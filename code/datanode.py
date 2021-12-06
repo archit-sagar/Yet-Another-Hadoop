@@ -1,3 +1,4 @@
+import pickle
 import sys
 import rpyc
 from rpyc.utils.server import ThreadedServer
@@ -83,21 +84,47 @@ class DataNodeService(rpyc.Service):
 
     def exposed_heartbeat_recieve(self,blocks_possessed):
         try:
-            block_list = os.listdir(myDatanodePath)
-            for block in block_list:
-                #block_id,ext=block.split(".")
-                block_id=int(block)
-                if block_id not in blocks_possessed:
-                    self.delete_block(block)            
-        except:
-            logger.error("Unable to access the storage")
+            block_list = set(map(lambda x: int(x), os.listdir(myDatanodePath)))
+            blocks_possessed = set(blocks_possessed)
+            extra_blocks = block_list - blocks_possessed
+            missing_blocks = blocks_possessed - block_list
+            logger.info(f"extra blocks: {extra_blocks}")
+            logger.info(f"missing_blocks: {missing_blocks}")
+            for block in extra_blocks:
+                self.delete_block(block)
+            for block in missing_blocks:
+                self.get_block(block)        
+        except Exception as e:
+            logger.error(f"Unable to access the storage {e}")
 
 
-    def get_block(self,datanode_data,block_id):
-        pass
+    def get_block(self,block_id):
+        try:
+            namenode = rpyc.connect('localhost', namenodePort, keepalive=True)
+            contact_nodes = list(namenode.root.find_datanodes_for_block(block_id))
+            namenode.close()
+            for dport in contact_nodes:
+                if dport == myPort: continue
+                try:
+                    dnode = rpyc.connect('localhost', dport)
+                    data = dnode.root.read(block_id)
+                    logger.debug(f"data: {data} with type {type(data)}")
+                    dnode.close()
+                    if data == False:
+                        raise Exception
+                    with open(os.path.join(myDatanodePath, str(block_id)), "w") as f:
+                        f.write(data)
+                        logger.info("Block {} is recovered successfully".format(block_id))
+                    return
+                except:
+                    continue
+            raise Exception
+        except Exception as e:
+            logger.error(f"Recovery of block {block_id} failed. {e}")
+
 
     def delete_block(self,block):
-        file_path=os.path.join(myDatanodePath, block)                    
+        file_path=os.path.join(myDatanodePath, str(block))                    
         try:
             os.remove(file_path)
             logger.info("Block {} is deleted successfully".format(block))
