@@ -11,19 +11,21 @@ import random
 import threading
 import time
 import math
+import subprocess
+import socket
 
 #python namenode.py its_port config_path
+
 myPort = int(sys.argv[1])
 fdata=open(sys.argv[2],"r")
 config=json.load(fdata)
 fdata.close()
 
+checkpointFilePath = os.path.join(config['namenode_checkpoints'], "checkpointFile")
 
-#setting up logger
 import logging.config
 logging.basicConfig(filename=config['namenode_log_path'], level=logging.INFO, format='%(asctime)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logger = logging.getLogger('')
-logger.info("Namenode Started")
 
 fs_image = {
     'folders': {
@@ -47,8 +49,47 @@ datanodePorts = {}
 
 heart_beat_condition=False
 
+if sys.argv[3]=="s":
+    logger.info("Secondary Namenode Started")
+    with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'r') as f:
+        primary_namenodePort = json.load(f)["port"] #port (int)
+    
+    while(True):
+        try:
+            time.sleep(config["sync_period"])
+        except:
+            sys.exit()
+        try:
+            primary_namenode = rpyc.connect("localhost", primary_namenodePort)
+            backup_data,datanodePorts,datanodeDetails=pickle.loads(primary_namenode.root.send_metadata())
+            #backup_data="abcd"
+            #backup_data,datanodePorts,datanodeDetails=primary_namenode.root.send_metadata()
+            with open(checkpointFilePath, 'wb') as f:
+                pickle.dump(backup_data, f)
+            primary_namenode.close()
+            #print(backup_data)
+            
+            logger.info("Fs_image written into Checkpoint")
+        except:
+            with  open(os.path.join(config["path_to_namenodes"], "ports.json"), 'w') as f:
+                f.write(json.dumps({"port": myPort},indent=4))
+
+            for i in range(config["num_datanodes"]):
+                con = rpyc.connect('localhost',datanodePorts[i])
+                con.root.new_namenode()
+                con.close()
+
+            break
+
+        
+
+#setting up logger
+logger.info("Primary Namenode Started")
+
+
+
 #loading saved fs_image back to memory
-checkpointFilePath = os.path.join(config['namenode_checkpoints'], "checkpointFile")
+
 if os.path.exists(checkpointFilePath):
     try:
         with open(checkpointFilePath, 'rb') as f:
@@ -61,6 +102,8 @@ if os.path.exists(checkpointFilePath):
         logger.info(datanode_blocks)
     except:
         logger.error("Error loading fs_image checkpoint")
+
+
 
 class NameNodeService(rpyc.Service):
     def exposed_isReady(self):
@@ -265,11 +308,15 @@ class NameNodeService(rpyc.Service):
                 contact_datanodes.append(datanodePorts[i])
         return contact_datanodes
 
+    def exposed_send_metadata(self):
+        full_metadata=[fs_image.copy(),datanode_blocks.copy()]
+        return pickle.dumps((full_metadata.copy(),datanodePorts.copy(),datanodeDetails.copy()))
+
 def writeCheckPoints(signal, frame): #writes fs_image into checkpointFile
     full_metadata=[fs_image,datanode_blocks]
     with open(checkpointFilePath, 'wb') as f:
         pickle.dump(full_metadata, f)
-        logger.info("Fs_image written into Checkpoint")
+        logger.info("Fs_image written into Checkpoints")
     sys.exit()
 
 def sending_heartbeat():
@@ -287,12 +334,38 @@ def sending_heartbeat():
         time.sleep(config["sync_period"])
 
 
+def get_free_tcp_port():
+    tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp.bind(('', 0))
+    addr, port = tcp.getsockname()
+    tcp.close()
+    return port
+
+def write_pids(config,pids):
+    with  open(os.path.join(config["path_to_namenodes"], "pids.json"), 'w') as f:
+        f.write(json.dumps(pids,indent=4))
+
+def read_pids(config):
+    with  open(os.path.join(config["path_to_namenodes"], "pids.json"), 'r') as f:
+        pids= json.load(f)
+    return pids
+
+
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, writeCheckPoints)
     t = ThreadedServer(NameNodeService, port=myPort)
+    my_pid=os.getpid()
+    pids=read_pids(config)
+    pids["n"]=my_pid
+    write_pids(config,pids)
     heartbeat_thread = threading.Thread(target=sending_heartbeat)
     heartbeat_thread.daemon = True
     heartbeat_thread.start()
+    secondary_namenodePort = get_free_tcp_port()
+    secondary_namenode=subprocess.Popen(args=[config['python_command'], 'code/namenode.py', str(secondary_namenodePort), config['dfs_setup_config'], "s"])
+    pids=read_pids(config)
+    pids["s"]=secondary_namenode.pid
+    write_pids(config,pids)
     logger.info("Namenode ThreadedServer started on port %s", myPort)
     t.start()
 
